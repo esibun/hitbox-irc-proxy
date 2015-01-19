@@ -73,6 +73,8 @@ class IRCServer:
 				if line[0] == 'JOIN':
 					self._hitboxChat.join(line[1][1:])
 					self._SendMessageToClient('JOIN %s' % line[1])
+				elif line[0] == 'PONG':
+					self._hitboxChat.pong()
 				elif line[0] == 'PRIVMSG':
 					self._hitboxChat.privmsg(line[1][1:], ' '.join(line[2:])[1:])
 				elif line[0] == 'WHO':
@@ -83,6 +85,9 @@ class IRCServer:
 
 	def HitboxMessage(self, line):
 		if not self._negotiated:
+			return
+		if line == '2::':
+			self._SendRawMessageToClient('PING :hitbox-irc-client')
 			return
 		line = line[4:]
 		j = json.loads(line)
@@ -143,6 +148,10 @@ class IRCServer:
 		print(''.join(['> ', ':', hostmask, ' ', message]))
 		self._connection.sendall(''.join([':', hostmask, ' ', message, '\r\n']).encode('UTF-8'))
 
+	def _SendRawMessageToClient(self, message):
+		print(''.join(['> ', message]))
+		self._connection.sendall(''.join([message, '\r\n']).encode('UTF-8'))
+
 	def _SendPrivmsgToClient(self, nick, message):
 		if nick == self._username: #don't echo back messages
 			return
@@ -160,8 +169,7 @@ class HitboxSocket:
 				print('~ CONNECTED')
 			elif str(message) == '2::':
 				print('< PING')
-				self.send('2::')
-				print('> PONG')
+				self._irc.HitboxMessage(str(message))
 			else:
 				print(''.join(['< ', str(message)[4:]]))
 				self._irc.HitboxMessage(str(message))
@@ -187,6 +195,10 @@ class HitboxSocket:
 	def _SendMessage(self, message):
 		print(''.join(['> ', message]))
 		self._socket.send(''.join(['5:::', message]))
+
+	def _SendPong(self):
+		print('> PONG')
+		self._socket.send('2::')
 	
 	def authenticate(self, username, password):
 		data = {'login': username, 'pass': password, 'app': 'desktop'}
@@ -240,6 +252,9 @@ class HitboxSocket:
 		}
 		j = json.dumps(query)
 		self._SendMessage(j)
+
+	def pong(self):
+		self._SendPong()
 		
 	def privmsg(self, channel, message):
 		if not self._connected:
