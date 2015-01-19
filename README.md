@@ -3,6 +3,7 @@ IRC proxy for Hitbox.tv
 
 Right now, the project is still pretty bare bones and in alpha state.
 
+Python must be ≥ 3.4
 Required python modules:
 - ws4py
 - requests
