@@ -111,7 +111,10 @@ class IRCServer:
 					for user in j2['params']['data']['user']:
 						nameslist.append('%%%s' % user)
 					for anon in j2['params']['data']['anon']:
-						nameslist.append('%s' % anon)
+						if anon in j2['params']['data']['isSubscriber']:
+							nameslist.append('+%s' % anon)
+						else:
+							nameslist.append('%s' % anon)
 					self._SendServerMessageToClient('353 %s = %s :%s' % (self._username, ''.join(['#', j2['params']['channel']]), ' '.join(nameslist)))
 					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', j2['params']['channel']])))
 					self._queuedWho = False
@@ -125,7 +128,10 @@ class IRCServer:
 				for user in j2['params']['data']['user']:
 					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), user, self._username))
 				for anon in j2['params']['data']['anon']:
-					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))						
+					if anon in j2['params']['data']['isSubscriber']:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H+ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))
+					else:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))						
 				self._SendServerMessageToClient('315 %s %s :End of /WHO list.' % (self._username, ''.join(['#', j2['params']['channel']])))
 
 	def _SendServerMessageToClient(self, message):
@@ -209,10 +215,26 @@ class HitboxSocket:
 			'args': [{
 				'method': 'joinChannel',
 				'params': {
-					'channel': channel,
+					'channel': channel.lower(),
 					'name': self._username,
 					'token': self._token,
 					'isAdmin': True
+				}
+			}]
+		}
+		j = json.dumps(query)
+		self._SendMessage(j)
+
+	def part(self, channel):
+		if not self._connected:
+			raise IOError('Not connected to server')
+		query = {
+			'name': 'message',
+			'args': [{
+				'method': 'partChannel',
+				'params': {
+					'channel': channel.lower(),
+					'name': self._username
 				}
 			}]
 		}
