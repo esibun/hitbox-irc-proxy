@@ -1,8 +1,6 @@
 import json, random, requests, socket, time
 from ws4py.client.threadedclient import WebSocketClient
 
-pendingMessages = ''
-
 class LoginException(BaseException):
 	pass
 
@@ -32,9 +30,6 @@ class IRCServer:
 				while self._connected:
 					self._HandleOutgoing()
 
-					if self._negotiated:
-						self._HandleIncoming()
-
 			finally:
 				self._connection.close()
 
@@ -58,7 +53,7 @@ class IRCServer:
 					self._SendServerMessageToClient('464 %s :No password given' % self._username)
 					self._connected = False
 				else:
-					self._hitboxChat = HitboxSocket()
+					self._hitboxChat = HitboxSocket(self)
 					self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :IRC connected, logging into Hitbox...')
 					try:
 						self._hitboxChat.authenticate(self._username, self._password)
@@ -69,6 +64,7 @@ class IRCServer:
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Login successful, connecting to chat...')
 					self._hitboxChat.connect()
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Connection successful!')
+					self._SendServerMessageToClient('005 %s PREFIX=(qaohv)~&@%%+ CHANMODES=fm :are supported by this server' % self._username)
 					self._negotiated = True
 			elif line[0] == 'QUIT':
 				self._connected = False
@@ -85,41 +81,52 @@ class IRCServer:
 					else:
 						self._hitboxChat.who(line[1][1:])
 
-	def _HandleIncoming(self):
-		global pendingMessages
-		if pendingMessages != '':
-			pendingMessages = pendingMessages.split('\r\n')[:-1]
-			for line in pendingMessages:
-				line = line[4:]
-				line = json.loads(line)
-				print(line)
-
-				if line['args']['method'] == 'chatMsg':
-					self._SendMessageToClient('PRIVMSG #%s :%s' % (line['args']['param']['channel'], line['args']['param']['text']))
-				elif line['args']['method'] == 'userList':
-					for admin in line['args']['params']['data']['admin']:
-						if line['args']['params']['channel'] == admin:
-							self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy %s H~ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', line['args']['param']['channel']]), admin, self._username))
-						elif admin in line['args']['params']['data']['isStaff'] or admin in line['args']['params']['data']['isCommunity']:
-							self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy %s H& :0 hitbox-irc-proxy' % (self._username, ''.join(['#', line['args']['param']['channel']]), admin, self._username))
+	def HitboxMessage(self, line):
+		if not self._negotiated:
+			return
+		line = line[4:]
+		j = json.loads(line)
+		try:
+			if j['args'][0]['method'] == 'chatMsg':
+				self._SendMessageToClient('PRIVMSG #%s :%s' % (j['args'][0]['param']['channel'], j['args'][0]['param']['text']))
+		except TypeError:
+			#for some reason, most messages contain serialized json in the args, so we need to unserialize first - why, hitbox?
+			j2 = json.loads(j['args'][0])
+			if j2['method'] == 'loginMsg':
+				self._receivedLoginMsg = True
+				if self._queuedWho == True:
+					self._hitboxChat.who(j2['params']['channel'])
+			elif j2['method'] == 'chatMsg':
+				self._SendPrivmsgToClient(j2['params']['name'], 'PRIVMSG #%s :%s' % (j2['params']['channel'], j2['params']['text']))
+			elif j2['method'] == 'userList':
+				if self._queuedWho == True: #also send NAMES reply - unreal seems to do this?
+					nameslist = []
+					for admin in j2['params']['data']['admin']:
+						if j2['params']['channel'] == admin:
+							nameslist.append('~%s' % admin)
+						elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
+							nameslist.append('&%s' % admin)
 						else:
-							self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy %s H@ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', line['args']['param']['channel']]), admin, self._username))
-					for user in line['args']['params']['data']['user']:
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy %s H% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', line['args']['param']['channel']]), user, self._username))
-					for anon in line['args']['params']['data']['anon']:
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy %s H :0 hitbox-irc-proxy' % (self._username, ''.join(['#', line['args']['param']['channel']]), user, self._username))						
-					self._SendServerMessageToClient('315 %s %s :End of /WHO list.' % (self._username, line['args']['param']['channel']))
-				else:
-					try:
-						#for some reason, some messages contain serialized json in the args, so we need to unserialize first
-						j = json.loads(line['args'])
-						if j['method'] == 'loginMsg':
-							self._receivedLoginMsg = True
-							if self._queuedWho == True:
-								self._hitboxChat.who(line[1][1:])
-					except:
-						pass
-			pendingMessages = ''
+							nameslist.append('@%s' % admin)
+					for user in j2['params']['data']['user']:
+						nameslist.append('%%%s' % user)
+					for anon in j2['params']['data']['anon']:
+						nameslist.append('%s' % anon)
+					self._SendServerMessageToClient('353 %s = %s :%s' % (self._username, ''.join(['#', j2['params']['channel']]), ' '.join(nameslist)))
+					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', j2['params']['channel']])))
+					self._queuedWho = False
+				for admin in j2['params']['data']['admin']:
+					if j2['params']['channel'] == admin:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H~ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
+					elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H& :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
+					else:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H@ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
+				for user in j2['params']['data']['user']:
+					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), user, self._username))
+				for anon in j2['params']['data']['anon']:
+					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))						
+				self._SendServerMessageToClient('315 %s %s :End of /WHO list.' % (self._username, ''.join(['#', j2['params']['channel']])))
 
 	def _SendServerMessageToClient(self, message):
 		print(''.join(['> ', ':hitbox-irc-proxy ', message]))
@@ -130,10 +137,19 @@ class IRCServer:
 		print(''.join(['> ', ':', hostmask, ' ', message]))
 		self._connection.sendall(''.join([':', hostmask, ' ', message, '\r\n']).encode('UTF-8'))
 
+	def _SendPrivmsgToClient(self, nick, message):
+		if nick == self._username: #don't echo back messages
+			return
+		hostmask = ''.join([nick, '!', nick, '@hitbox-irc-proxy'])
+		print(''.join(['> ', ':', hostmask, ' ', message]))
+		self._connection.sendall(''.join([':', hostmask, ' ', message, '\r\n']).encode('UTF-8'))
+
 class HitboxSocket:
 	class _HitboxWS(WebSocketClient):
+		def SetIRCObject(self, irc):
+			self._irc = irc
+
 		def received_message(self, message):
-			global pendingMessages
 			if str(message) == '1::':
 				print('~ CONNECTED')
 			elif str(message) == '2::':
@@ -141,12 +157,13 @@ class HitboxSocket:
 				self.send('2::')
 				print('> PONG')
 			else:
-				pendingMessages = ''.join([pendingMessages, str(message)])
 				print(''.join(['< ', str(message)[4:]]))
+				self._irc.HitboxMessage(str(message))
 
-	def __init__(self):
+	def __init__(self, irc):
 		self._connected = False
 		self._id = None
+		self._irc = irc
 		self._server = None
 		self._socket = None
 		self._token = None
@@ -181,6 +198,7 @@ class HitboxSocket:
 		self._id = self._GetConnectionId()
 		self._connected = True
 		self._socket = self._HitboxWS(''.join(['ws://', self._server, '/socket.io/1/websocket/', self._id]))
+		self._socket.SetIRCObject(self._irc)
 		self._socket.connect()
 
 	def join(self, channel):
