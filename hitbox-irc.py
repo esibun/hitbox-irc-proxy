@@ -64,6 +64,9 @@ class IRCServer:
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Login successful, connecting to chat...')
 					self._hitboxChat.connect()
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Connection successful!')
+					self._SendServerMessageToClient('001 %s :Welcome to the IRC Relay Network %s! %s@hitbox-irc-proxy' % (self._username, self._username, self._username))
+					self._SendServerMessageToClient('002 %s :Your host is hitbox-irc-proxy, running version pre-alpha' % self._username)
+					self._SendServerMessageToClient('003 %s :This server was created 5/21 11:42 PM' % self._username)
 					self._SendServerMessageToClient('005 %s PREFIX=(qaohv)~&@%%+ CHANMODES=fm :are supported by this server' % self._username)
 					self._negotiated = True
 			elif line[0] == 'QUIT':
@@ -107,7 +110,7 @@ class IRCServer:
 				if self._queuedWho == True: #also send NAMES reply - unreal seems to do this?
 					nameslist = []
 					for admin in j2['params']['data']['admin']:
-						if j2['params']['channel'] == admin:
+						if j2['params']['channel'].lower() == admin.lower():
 							nameslist.append('~%s' % admin)
 						elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
 							nameslist.append('&%s' % admin)
@@ -124,14 +127,14 @@ class IRCServer:
 					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', j2['params']['channel']])))
 					self._queuedWho = False
 				for admin in j2['params']['data']['admin']:
-					if j2['params']['channel'] == admin:
+					if j2['params']['channel'].lower() == admin.lower():
 						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H~ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
 					elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
 						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H& :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
 					else:
 						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H@ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
 				for user in j2['params']['data']['user']:
-					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), user, self._username))
+					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H%% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), user, self._username))
 				for anon in j2['params']['data']['anon']:
 					if anon in j2['params']['data']['isSubscriber']:
 						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H+ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))
@@ -264,7 +267,7 @@ class HitboxSocket:
 			'args': [{
 				'method': 'chatMsg',
 				'params': {
-					'channel': channel,
+					'channel': channel.lower(),
 					'name': self._username,
 					'nameColor': 'FFFFFF',
 					'text': message
@@ -282,7 +285,7 @@ class HitboxSocket:
 			'args': [{
 				'method': 'getChannelUserList',
 				'params': {
-					'channel': channel
+					'channel': channel.lower()
 				}
 			}]
 		}
