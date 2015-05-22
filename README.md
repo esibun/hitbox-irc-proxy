@@ -15,4 +15,4 @@ python hitbox-irc.py
 
 Connect to your local machine with your favorite IRC client - nick must be your Hitbox username, and server password must be your Hitbox password.
 
-Right now, only joins, nicklist, and messages work, but more is coming very soon.
+Right now, only joins, nicklist, and messages work, but more is coming very soon(tm).  Script tested working with HexChat and Weechat.
