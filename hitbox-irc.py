@@ -8,6 +8,7 @@ class IRCServer:
 	def __init__(self):
 		self._connection = None
 		self._connected = False
+		self._ownMessage = False
 		self._negotiated = False
 		self._receivedLoginMsg = False
 		self._queuedWho = False
@@ -81,6 +82,7 @@ class IRCServer:
 				elif line[0] == 'PONG':
 					self._hitboxChat.pong()
 				elif line[0] == 'PRIVMSG':
+					self._ownMessage = True
 					self._hitboxChat.privmsg(line[1][1:], ' '.join(line[2:])[1:])
 				elif line[0] == 'WHO':
 					if self._receivedLoginMsg == False:
@@ -159,7 +161,8 @@ class IRCServer:
 		self._connection.sendall(''.join([message, '\r\n']).encode('UTF-8'))
 
 	def _SendPrivmsgToClient(self, nick, message):
-		if nick == self._username: #don't echo back messages
+		if self._ownMessage: #don't echo back messages
+			self._ownMessage = False
 			return
 		hostmask = ''.join([nick, '!', nick, '@hitbox-irc-proxy'])
 		print(''.join(['> ', ':', hostmask, ' ', message]))
