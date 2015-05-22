@@ -76,6 +76,8 @@ class IRCServer:
 				if line[0] == 'JOIN':
 					self._hitboxChat.join(line[1][1:])
 					self._SendMessageToClient('JOIN %s' % line[1])
+				elif line[0] == 'PING':
+					self._SendRawMessageToClient('PONG %s' % ''.join(line[1:]))
 				elif line[0] == 'PONG':
 					self._hitboxChat.pong()
 				elif line[0] == 'PRIVMSG':
@@ -105,6 +107,7 @@ class IRCServer:
 				if self._queuedWho == True:
 					self._hitboxChat.who(j2['params']['channel'])
 			elif j2['method'] == 'chatMsg':
+				print("gay")
 				self._SendPrivmsgToClient(j2['params']['name'], 'PRIVMSG #%s :%s' % (j2['params']['channel'], j2['params']['text']))
 			elif j2['method'] == 'userList':
 				if self._queuedWho == True: #also send NAMES reply - unreal seems to do this?
