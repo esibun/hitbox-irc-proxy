@@ -11,8 +11,9 @@ class IRCServer:
 		self._ownMessage = False
 		self._negotiated = False
 		self._receivedLoginMsg = False
+		self._rejectOwn = True
 		self._queuedWho = False
-		self._hitboxChat = None
+		self._hitboxChat = {}
 		self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self._socket.bind(('', 7778))
@@ -54,16 +55,16 @@ class IRCServer:
 					self._SendServerMessageToClient('464 %s :No password given' % self._username)
 					self._connected = False
 				else:
-					self._hitboxChat = HitboxSocket(self)
+					self._hitboxChat[self._username] = HitboxSocket(self)
 					self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :IRC connected, logging into Hitbox...')
 					try:
-						self._hitboxChat.authenticate(self._username, self._password)
+						self._hitboxChat[self._username].authenticate(self._username, self._password)
 					except LoginException:
 						self._SendServerMessageToClient('464 %s :Password given is invalid' % self._username)
 						self._connected = False
 						break
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Login successful, connecting to chat...')
-					self._hitboxChat.connect()
+					self._hitboxChat[self._username].connect()
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Connection successful!')
 					self._SendServerMessageToClient('001 %s :Welcome to the IRC Relay Network %s! %s@hitbox-irc-proxy' % (self._username, self._username, self._username))
 					self._SendServerMessageToClient('002 %s :Your host is hitbox-irc-proxy, running version pre-alpha' % self._username)
@@ -75,28 +76,38 @@ class IRCServer:
 				self._negotiated = False
 			elif self._negotiated == True:
 				if line[0] == 'JOIN':
-					self._hitboxChat.join(line[1][1:])
-					self._SendMessageToClient('JOIN %s' % line[1])
+					if line[1][1:] == self._username:
+						self._hitboxChat[self._username].join(line[1][1:])
+						self._SendMessageToClient('JOIN %s' % line[1])
+					else:
+						self._hitboxChat[line[1][1:]] = HitboxSocket(self)
+						self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :Creating new WS connection for %s' % line[1][1:])
+						self._hitboxChat[line[1][1:]].setLoginInfo(self._username, self._hitboxChat[self._username].grabToken())
+						self._hitboxChat[line[1][1:]].connect()
+						self._hitboxChat[line[1][1:]].join(line[1][1:])
+						self._SendMessageToClient('JOIN %s' % line[1])
 					self._queuedWho = True
-					self._hitboxChat.who(line[1][1:]) #fixes nicklist on clients that don't send WHO on join
+					self._hitboxChat[line[1][1:]].who(line[1][1:]) #fixes nicklist on clients that don't send WHO on join
 				elif line[0] == 'PING':
 					self._SendRawMessageToClient('PONG %s' % ''.join(line[1:]))
 				elif line[0] == 'PONG':
-					self._hitboxChat.pong()
+					for _, chat in self._hitboxChat.items():
+						chat.pong()
 				elif line[0] == 'PRIVMSG':
 					self._ownMessage = True
-					self._hitboxChat.privmsg(line[1][1:], ' '.join(line[2:])[1:])
+					self._hitboxChat[line[1][1:]].privmsg(line[1][1:], ' '.join(line[2:])[1:])
 				elif line[0] == 'WHO':
 					if self._receivedLoginMsg == False:
 						self._queuedWho = True
 					else:
-						self._hitboxChat.who(line[1][1:])
+						self._hitboxChat[line[1][1:]].who(line[1][1:])
 				elif line[0] == 'COLOR':
 					print(line[1])
 					if len(line[1]) != 7:
 						self._SendServerMessageToClient('461 COLOR :COLOR must be in HTML Hex format (#FFFFFF)')
 					else:
-						self._hitboxChat.changeColor(line[1][1:])
+						for _, chat in self._hitboxChat.items():
+							chat.changeColor(line[1][1:])
 
 	def HitboxMessage(self, line):
 		if not self._negotiated:
@@ -115,7 +126,7 @@ class IRCServer:
 			if j2['method'] == 'loginMsg':
 				self._receivedLoginMsg = True
 				if self._queuedWho == True:
-					self._hitboxChat.who(j2['params']['channel'])
+					self._hitboxChat[j2['params']['channel']].who(j2['params']['channel'])
 			elif j2['method'] == 'chatMsg':
 				self._SendPrivmsgToClient(j2['params']['name'], 'PRIVMSG #%s :%s' % (j2['params']['channel'], j2['params']['text']))
 			elif j2['method'] == 'userList':
@@ -224,6 +235,13 @@ class HitboxSocket:
 			raise LoginException('Invalid login - username or password invalid')
 		json = r.json()
 		self._token = json['authToken']
+		self._username = username
+
+	def grabToken(self):
+		return self._token
+
+	def setLoginInfo(self, username, authToken):
+		self._token = authToken
 		self._username = username
 
 	def changeColor(self, color):
