@@ -89,6 +89,12 @@ class IRCServer:
 						self._queuedWho = True
 					else:
 						self._hitboxChat.who(line[1][1:])
+				elif line[0] == 'COLOR':
+					print(line[1])
+					if len(line[1]) != 7:
+						self._SendServerMessageToClient('461 COLOR :COLOR must be in HTML Hex format (#FFFFFF)')
+					else:
+						self._hitboxChat.changeColor(line[1][1:])
 
 	def HitboxMessage(self, line):
 		if not self._negotiated:
@@ -183,6 +189,7 @@ class HitboxSocket:
 				self._irc.HitboxMessage(str(message))
 
 	def __init__(self, irc):
+		self._color = "FF0000"
 		self._connected = False
 		self._id = None
 		self._irc = irc
@@ -216,6 +223,9 @@ class HitboxSocket:
 		json = r.json()
 		self._token = json['authToken']
 		self._username = username
+
+	def changeColor(self, color):
+		self._color = color
 		
 	def connect(self):
 		if self._token == None:
@@ -274,7 +284,7 @@ class HitboxSocket:
 				'params': {
 					'channel': channel.lower(),
 					'name': self._username,
-					'nameColor': 'FFFFFF',
+					'nameColor': self._color,
 					'text': message
 				}
 			}]
