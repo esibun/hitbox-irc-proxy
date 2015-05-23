@@ -77,6 +77,8 @@ class IRCServer:
 				if line[0] == 'JOIN':
 					self._hitboxChat.join(line[1][1:])
 					self._SendMessageToClient('JOIN %s' % line[1])
+					self._queuedWho = True
+					self._hitboxChat.who(line[1][1:]) #fixes nicklist on clients that don't send WHO on join
 				elif line[0] == 'PING':
 					self._SendRawMessageToClient('PONG %s' % ''.join(line[1:]))
 				elif line[0] == 'PONG':
