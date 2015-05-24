@@ -88,6 +88,12 @@ class IRCServer:
 						self._SendMessageToClient('JOIN %s' % line[1])
 					self._queuedWho = True
 					self._hitboxChat[line[1][1:]].who(line[1][1:]) #fixes nicklist on clients that don't send WHO on join
+				elif line[0] == 'PART':
+					if line[1][1:] == self._username:
+						self._SendMessageToClient('PART %s' % line[1])
+					else:
+						self._hitboxChat[line[1][1:]].disconnect()
+						del self._hitboxChat[line[1][1:]]
 				elif line[0] == 'PING':
 					self._SendRawMessageToClient('PONG %s' % ''.join(line[1:]))
 				elif line[0] == 'PONG':
@@ -256,6 +262,9 @@ class HitboxSocket:
 		self._socket = self._HitboxWS(''.join(['ws://', self._server, '/socket.io/1/websocket/', self._id]))
 		self._socket.SetIRCObject(self._irc)
 		self._socket.connect()
+
+	def disconnect(self):
+		self._socket.disconnect()
 
 	def join(self, channel):
 		if not self._connected:
