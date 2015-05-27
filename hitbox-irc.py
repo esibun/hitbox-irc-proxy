@@ -1,5 +1,6 @@
 import json, random, requests, socket, time
 from ws4py.client.threadedclient import WebSocketClient
+from threading import Thread, Event
 
 class LoginException(BaseException):
 	pass
@@ -14,7 +15,9 @@ class IRCServer:
 		self._rejectOwn = True
 		self._sendNames = False
 		self._sendWho = False
+		self._updateNames = False
 		self._hitboxChat = {}
+		self._nameslist = {}
 		self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self._socket.bind(('', 7778))
@@ -66,6 +69,9 @@ class IRCServer:
 						break
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Login successful, connecting to chat...')
 					self._hitboxChat[self._username].connect()
+					self._hitboxChat[self._username].stopFlag = Event()
+					thread = self.NamesUpdateTimerThread(self._hitboxChat[self._username], self._username)
+					thread.start()
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Connection successful!')
 					self._SendServerMessageToClient('001 %s :Welcome to the IRC Relay Network %s! %s@hitbox-irc-proxy' % (self._username, self._username, self._username))
 					self._SendServerMessageToClient('002 %s :Your host is hitbox-irc-proxy, running version pre-alpha' % self._username)
@@ -141,6 +147,43 @@ class IRCServer:
 			elif j2['method'] == 'chatMsg':
 				self._SendPrivmsgToClient(j2['params']['name'], 'PRIVMSG #%s :%s' % (j2['params']['channel'], j2['params']['text']))
 			elif j2['method'] == 'userList':
+				if self._updateNames == True and not self._sendNames:
+					oldnames = self._nameslist[j2['params']['channel']]
+					self._nameslist[j2['params']['channel']] = []
+					for admin in j2['params']['data']['admin']:
+						if j2['params']['channel'].lower() == admin.lower():
+							self._nameslist[j2['params']['channel']].append('~%s' % admin)
+						elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
+							self._nameslist[j2['params']['channel']].append('&%s' % admin)
+						else:
+							self._nameslist[j2['params']['channel']].append('@%s' % admin)
+					for user in j2['params']['data']['user']:
+						self._nameslist[j2['params']['channel']].append('%%%s' % user)
+					for anon in j2['params']['data']['anon']:
+						if anon in j2['params']['data']['isSubscriber']:
+							self._nameslist[j2['params']['channel']].append('+%s' % anon)
+						else:
+							self._nameslist[j2['params']['channel']].append('x%s' % anon)
+					self._updateNames = False
+					for name in oldnames:
+						if name not in self._nameslist[j2['params']['channel']]:
+							nick = name#''.join(name[1:])
+							self._SendPrivmsgToClient(nick, 'PART #%s' % j2['params']['channel'])
+					for name in self._nameslist[j2['params']['channel']]:
+						if name not in oldnames:
+							nick = name#''.join(name[1:])
+							self._SendPrivmsgToClient(''.join(name[1:]), 'JOIN #%s' % j2['params']['channel'])
+							if name[0] == '~':
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +q %s' % (j2['params']['channel'], nick))
+							elif name[0] == '&':
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +a %s' % (j2['params']['channel'], nick))
+							elif name[0] == '@':
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +o %s' % (j2['params']['channel'], nick))
+							elif name[0] == '%':
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +h %s' % (j2['params']['channel'], nick))
+							elif name[0] == '+':
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +v %s' % (j2['params']['channel'], nick))
+					return
 				if self._sendNames == True:
 					nameslist = []
 					for admin in j2['params']['data']['admin']:
@@ -156,7 +199,11 @@ class IRCServer:
 						if anon in j2['params']['data']['isSubscriber']:
 							nameslist.append('+%s' % anon)
 						else:
-							nameslist.append('%s' % anon)
+							nameslist.append('x%s' % anon)
+					self._nameslist[j2['params']['channel']] = nameslist
+					for s, item in enumerate(nameslist):
+						if item[0] == 'x':
+							nameslist[s] = ''.join(item[1:])
 					self._SendServerMessageToClient('353 %s = %s :%s' % (self._username, ''.join(['#', j2['params']['channel']]), ' '.join(nameslist)))
 					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', j2['params']['channel']])))
 					self._sendNames = False
@@ -198,11 +245,25 @@ class IRCServer:
 		print(''.join(['> ', ':', hostmask, ' ', message]))
 		self._connection.sendall(''.join([':', hostmask, ' ', message, '\r\n']).encode('UTF-8'))
 
+	class NamesUpdateTimerThread(Thread):
+		def __init__(self, event, channel):
+			Thread.__init__(self)
+			self.stopped = event.stopFlag
+			self._chatObject = event
+			self._channel = channel
+
+		def run(self):
+			while not self.stopped.wait(5):
+				self._chatObject.namesUpdate(self._channel)
+
 	def setWho(self):
 		self._sendWho = True
 
 	def setNames(self):
 		self._sendNames = True
+
+	def updateNames(self):
+		self._updateNames = True
 
 class HitboxSocket:
 	class _HitboxWS(WebSocketClient):
@@ -228,6 +289,7 @@ class HitboxSocket:
 		self._socket = None
 		self._token = None
 		self._username = None
+		self.stopFlag = None
 
 	def _GetRandomServer(self):
 		r = requests.get('http://api.hitbox.tv/chat/servers')
@@ -300,6 +362,22 @@ class HitboxSocket:
 		if not self._connected:
 			raise IOError('Not connected to server')
 		self._irc.setNames()
+		query = {
+			'name': 'message',
+			'args': [{
+				'method': 'getChannelUserList',
+				'params': {
+					'channel': channel.lower()
+				}
+			}]
+		}
+		j = json.dumps(query)
+		self._SendMessage(j)
+
+	def namesUpdate(self, channel):
+		if not self._connected:
+			raise IOError('Not connected to server')
+		self._irc.updateNames()
 		query = {
 			'name': 'message',
 			'args': [{
