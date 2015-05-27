@@ -12,7 +12,8 @@ class IRCServer:
 		self._negotiated = False
 		self._receivedLoginMsg = False
 		self._rejectOwn = True
-		self._queuedWho = False
+		self._sendNames = False
+		self._sendWho = False
 		self._hitboxChat = {}
 		self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -86,8 +87,12 @@ class IRCServer:
 						self._hitboxChat[line[1][1:]].connect()
 						self._hitboxChat[line[1][1:]].join(line[1][1:])
 						self._SendMessageToClient('JOIN %s' % line[1])
-					self._queuedWho = True
-					self._hitboxChat[line[1][1:]].who(line[1][1:]) #fixes nicklist on clients that don't send WHO on join
+					self._hitboxChat[line[1][1:]].names(line[1][1:])
+				elif line[0] == 'NAMES':
+					if self._receivedLoginMsg == False:
+						self._sendNames = True
+					else:
+						self._hitboxChat[line[1][1:]].names(line[1][1:])
 				elif line[0] == 'PART':
 					if line[1][1:] == self._username:
 						self._SendMessageToClient('PART %s' % line[1])
@@ -104,7 +109,7 @@ class IRCServer:
 					self._hitboxChat[line[1][1:]].privmsg(line[1][1:], ' '.join(line[2:])[1:])
 				elif line[0] == 'WHO':
 					if self._receivedLoginMsg == False:
-						self._queuedWho = True
+						self._sendWho = True
 					else:
 						self._hitboxChat[line[1][1:]].who(line[1][1:])
 				elif line[0] == 'COLOR':
@@ -131,12 +136,12 @@ class IRCServer:
 			j2 = json.loads(j['args'][0])
 			if j2['method'] == 'loginMsg':
 				self._receivedLoginMsg = True
-				if self._queuedWho == True:
-					self._hitboxChat[j2['params']['channel']].who(j2['params']['channel'])
+				if self._sendNames == True:
+					self._hitboxChat[j2['params']['channel']].names(j2['params']['channel'])
 			elif j2['method'] == 'chatMsg':
 				self._SendPrivmsgToClient(j2['params']['name'], 'PRIVMSG #%s :%s' % (j2['params']['channel'], j2['params']['text']))
 			elif j2['method'] == 'userList':
-				if self._queuedWho == True: #also send NAMES reply - unreal seems to do this?
+				if self._sendNames == True:
 					nameslist = []
 					for admin in j2['params']['data']['admin']:
 						if j2['params']['channel'].lower() == admin.lower():
@@ -154,7 +159,8 @@ class IRCServer:
 							nameslist.append('%s' % anon)
 					self._SendServerMessageToClient('353 %s = %s :%s' % (self._username, ''.join(['#', j2['params']['channel']]), ' '.join(nameslist)))
 					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', j2['params']['channel']])))
-					self._queuedWho = False
+					self._sendNames = False
+					return
 				for admin in j2['params']['data']['admin']:
 					if j2['params']['channel'].lower() == admin.lower():
 						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H~ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
@@ -191,6 +197,12 @@ class IRCServer:
 		hostmask = ''.join([nick, '!', nick, '@hitbox-irc-proxy'])
 		print(''.join(['> ', ':', hostmask, ' ', message]))
 		self._connection.sendall(''.join([':', hostmask, ' ', message, '\r\n']).encode('UTF-8'))
+
+	def setWho(self):
+		self._sendWho = True
+
+	def setNames(self):
+		self._sendNames = True
 
 class HitboxSocket:
 	class _HitboxWS(WebSocketClient):
@@ -284,6 +296,22 @@ class HitboxSocket:
 		j = json.dumps(query)
 		self._SendMessage(j)
 
+	def names(self, channel):
+		if not self._connected:
+			raise IOError('Not connected to server')
+		self._irc.setNames()
+		query = {
+			'name': 'message',
+			'args': [{
+				'method': 'getChannelUserList',
+				'params': {
+					'channel': channel.lower()
+				}
+			}]
+		}
+		j = json.dumps(query)
+		self._SendMessage(j)
+
 	def part(self, channel):
 		if not self._connected:
 			raise IOError('Not connected to server')
@@ -324,6 +352,7 @@ class HitboxSocket:
 	def who(self, channel):
 		if not self._connected:
 			raise IOError('Not connected to server')
+		self._irc.setWho()
 		query = {
 			'name': 'message',
 			'args': [{
