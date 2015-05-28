@@ -10,6 +10,7 @@ class IRCServer:
 		self._connection = None
 		self._connected = False
 		self._ownMessage = False
+		self._inOwnChannel = False
 		self._negotiated = False
 		self._receivedLoginMsg = False
 		self._rejectOwn = True
@@ -84,15 +85,19 @@ class IRCServer:
 			elif self._negotiated == True:
 				if line[0] == 'JOIN':
 					if line[1][1:] == self._username:
-						self._hitboxChat[self._username].join(line[1][1:])
-						self._SendMessageToClient('JOIN %s' % line[1])
+						if not self._inOwnChannel:
+							self._hitboxChat[self._username].join(line[1][1:])
+							self._inOwnChannel = True
 					else:
-						self._hitboxChat[line[1][1:]] = HitboxSocket(self)
-						self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :Creating new WS connection for %s' % line[1][1:])
-						self._hitboxChat[line[1][1:]].setLoginInfo(self._username, self._hitboxChat[self._username].grabToken())
-						self._hitboxChat[line[1][1:]].connect()
-						self._hitboxChat[line[1][1:]].join(line[1][1:])
-						self._SendMessageToClient('JOIN %s' % line[1])
+						try:
+							self._hitboxChat[line[1][1:]].join(line[1][1:])
+						except KeyError:
+							self._hitboxChat[line[1][1:]] = HitboxSocket(self)
+							self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :Creating new WS connection for %s' % line[1][1:])
+							self._hitboxChat[line[1][1:]].setLoginInfo(self._username, self._hitboxChat[self._username].grabToken())
+							self._hitboxChat[line[1][1:]].connect()
+							self._hitboxChat[line[1][1:]].join(line[1][1:])
+					self._SendMessageToClient('JOIN %s' % line[1])
 					self._hitboxChat[line[1][1:]].names(line[1][1:])
 				elif line[0] == 'NAMES':
 					if self._receivedLoginMsg == False:
@@ -101,10 +106,16 @@ class IRCServer:
 						self._hitboxChat[line[1][1:]].names(line[1][1:])
 				elif line[0] == 'PART':
 					if line[1][1:] == self._username:
+						self._inOwnChannel = False
 						self._SendMessageToClient('PART %s' % line[1])
 					else:
-						self._hitboxChat[line[1][1:]].disconnect()
-						del self._hitboxChat[line[1][1:]]
+						try:
+							self._hitboxChat[line[1][1:]].part()
+							self._hitboxChat[line[1][1:]].disconnect()
+							self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :Destroying WS connection for %s' % line[1][1:])
+							del self._hitboxChat[line[1][1:]]
+						except KeyError:
+							pass
 				elif line[0] == 'PING':
 					self._SendRawMessageToClient('PONG %s' % ''.join(line[1:]))
 				elif line[0] == 'PONG':
@@ -133,16 +144,22 @@ class IRCServer:
 			self._SendRawMessageToClient('PING :hitbox-irc-client')
 			return
 		line = line[4:]
-		j = json.loads(line)
 		try:
-			if j['args'][0]['method'] == 'chatMsg':
+			j = json.loads(line)
+		except:
+			return #throw away blank lines
+		try:
+			if j['args'][0]['method'] == 'chatMsg' and (j['args'][0]['param']['channel'] != self._username or self._inOwnChannel):
 				self._SendMessageToClient('PRIVMSG #%s :%s' % (j['args'][0]['param']['channel'], j['args'][0]['param']['text']))
 		except TypeError:
 			#for some reason, most messages contain serialized json in the args, so we need to unserialize first - why, hitbox?
 			j2 = json.loads(j['args'][0])
-			name = j2['params']['name']
-			channel = j2['params']['channel']
-			data = j2['params']['data']
+			try: name = j2['params']['name']
+			except: pass
+			try: channel = j2['params']['channel']
+			except: pass
+			try: data = j2['params']['data']
+			except: pass
 			if j2['method'] == 'loginMsg':
 				self._receivedLoginMsg = True
 				if self._sendNames == True:
@@ -257,7 +274,10 @@ class IRCServer:
 
 		def run(self):
 			while not self.stopped.wait(5):
-				self._chatObject.namesUpdate(self._channel)
+				try:
+					self._chatObject.namesUpdate(self._channel)
+				except AttributeError:
+					self.stopped.set()
 
 	def setWho(self):
 		self._sendWho = True
@@ -341,7 +361,7 @@ class HitboxSocket:
 		self._socket.connect()
 
 	def disconnect(self):
-		self._socket.disconnect()
+		self._socket.close()
 
 	def join(self, channel):
 		if not self._connected:
