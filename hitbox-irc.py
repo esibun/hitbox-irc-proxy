@@ -140,89 +140,92 @@ class IRCServer:
 		except TypeError:
 			#for some reason, most messages contain serialized json in the args, so we need to unserialize first - why, hitbox?
 			j2 = json.loads(j['args'][0])
+			name = j2['params']['name']
+			channel = j2['params']['channel']
+			data = j2['params']['data']
 			if j2['method'] == 'loginMsg':
 				self._receivedLoginMsg = True
 				if self._sendNames == True:
-					self._hitboxChat[j2['params']['channel']].names(j2['params']['channel'])
+					self._hitboxChat[channel].names(channel)
 			elif j2['method'] == 'chatMsg':
-				self._SendPrivmsgToClient(j2['params']['name'], 'PRIVMSG #%s :%s' % (j2['params']['channel'], j2['params']['text']))
+				self._SendPrivmsgToClient(name, 'PRIVMSG #%s :%s' % (channel, j2['params']['text']))
 			elif j2['method'] == 'userList':
 				if self._updateNames == True and not self._sendNames:
-					oldnames = self._nameslist[j2['params']['channel']]
-					self._nameslist[j2['params']['channel']] = []
-					for admin in j2['params']['data']['admin']:
-						if j2['params']['channel'].lower() == admin.lower():
-							self._nameslist[j2['params']['channel']].append('~%s' % admin)
-						elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
-							self._nameslist[j2['params']['channel']].append('&%s' % admin)
+					oldnames = self._nameslist[channel]
+					self._nameslist[channel] = []
+					for admin in data['admin']:
+						if channel.lower() == admin.lower():
+							self._nameslist[channel].append('~%s' % admin)
+						elif admin in data['isStaff'] or admin in data['isCommunity']:
+							self._nameslist[channel].append('&%s' % admin)
 						else:
-							self._nameslist[j2['params']['channel']].append('@%s' % admin)
-					for user in j2['params']['data']['user']:
-						self._nameslist[j2['params']['channel']].append('%%%s' % user)
-					for anon in j2['params']['data']['anon']:
-						if anon in j2['params']['data']['isSubscriber']:
-							self._nameslist[j2['params']['channel']].append('+%s' % anon)
+							self._nameslist[channel].append('@%s' % admin)
+					for user in data['user']:
+						self._nameslist[channel].append('%%%s' % user)
+					for anon in data['anon']:
+						if anon in data['isSubscriber']:
+							self._nameslist[channel].append('+%s' % anon)
 						else:
-							self._nameslist[j2['params']['channel']].append('x%s' % anon)
+							self._nameslist[channel].append('x%s' % anon)
 					self._updateNames = False
 					for name in oldnames:
-						if name not in self._nameslist[j2['params']['channel']]:
+						if name not in self._nameslist[channel]:
 							nick = name#''.join(name[1:])
-							self._SendPrivmsgToClient(nick, 'PART #%s' % j2['params']['channel'])
-					for name in self._nameslist[j2['params']['channel']]:
+							self._SendPrivmsgToClient(nick, 'PART #%s' % channel)
+					for name in self._nameslist[channel]:
 						if name not in oldnames:
 							nick = name#''.join(name[1:])
-							self._SendPrivmsgToClient(''.join(name[1:]), 'JOIN #%s' % j2['params']['channel'])
+							self._SendPrivmsgToClient(''.join(name[1:]), 'JOIN #%s' % channel)
 							if name[0] == '~':
-								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +q %s' % (j2['params']['channel'], nick))
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +q %s' % (channel, nick))
 							elif name[0] == '&':
-								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +a %s' % (j2['params']['channel'], nick))
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +a %s' % (channel, nick))
 							elif name[0] == '@':
-								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +o %s' % (j2['params']['channel'], nick))
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +o %s' % (channel, nick))
 							elif name[0] == '%':
-								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +h %s' % (j2['params']['channel'], nick))
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +h %s' % (channel, nick))
 							elif name[0] == '+':
-								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +v %s' % (j2['params']['channel'], nick))
+								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +v %s' % (channel, nick))
 					return
 				if self._sendNames == True:
 					nameslist = []
-					for admin in j2['params']['data']['admin']:
-						if j2['params']['channel'].lower() == admin.lower():
+					for admin in data['admin']:
+						if channel.lower() == admin.lower():
 							nameslist.append('~%s' % admin)
-						elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
+						elif admin in data['isStaff'] or admin in data['isCommunity']:
 							nameslist.append('&%s' % admin)
 						else:
 							nameslist.append('@%s' % admin)
-					for user in j2['params']['data']['user']:
+					for user in data['user']:
 						nameslist.append('%%%s' % user)
-					for anon in j2['params']['data']['anon']:
-						if anon in j2['params']['data']['isSubscriber']:
+					for anon in data['anon']:
+						if anon in data['isSubscriber']:
 							nameslist.append('+%s' % anon)
 						else:
 							nameslist.append('x%s' % anon)
-					self._nameslist[j2['params']['channel']] = nameslist
+					self._nameslist[channel] = nameslist
 					for s, item in enumerate(nameslist):
 						if item[0] == 'x':
 							nameslist[s] = ''.join(item[1:])
-					self._SendServerMessageToClient('353 %s = %s :%s' % (self._username, ''.join(['#', j2['params']['channel']]), ' '.join(nameslist)))
-					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', j2['params']['channel']])))
+					self._SendServerMessageToClient('353 %s = %s :%s' % (self._username, ''.join(['#', channel]), ' '.join(nameslist)))
+					self._SendServerMessageToClient('366 %s %s :End of /NAMES list.' % (self._username, ''.join(['#', channel])))
 					self._sendNames = False
 					return
-				for admin in j2['params']['data']['admin']:
-					if j2['params']['channel'].lower() == admin.lower():
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H~ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
-					elif admin in j2['params']['data']['isStaff'] or admin in j2['params']['data']['isCommunity']:
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H& :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
+				for admin in data['admin']:
+					if channel.lower() == admin.lower():
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H~ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', channel]), admin, self._username))
+					elif admin in data['isStaff'] or admin in data['isCommunity']:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H& :0 hitbox-irc-proxy' % (self._username, ''.join(['#', channel]), admin, self._username))
 					else:
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H@ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), admin, self._username))
-				for user in j2['params']['data']['user']:
-					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H%% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), user, self._username))
-				for anon in j2['params']['data']['anon']:
-					if anon in j2['params']['data']['isSubscriber']:
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H+ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H@ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', channel]), admin, self._username))
+				for user in data['user']:
+					self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H%% :0 hitbox-irc-proxy' % (self._username, ''.join(['#', channel]), user, self._username))
+				for anon in data['anon']:
+					if anon in data['isSubscriber']:
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H+ :0 hitbox-irc-proxy' % (self._username, ''.join(['#', channel]), anon, self._username))
 					else:
-						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H :0 hitbox-irc-proxy' % (self._username, ''.join(['#', j2['params']['channel']]), anon, self._username))						
-				self._SendServerMessageToClient('315 %s %s :End of /WHO list.' % (self._username, ''.join(['#', j2['params']['channel']])))
+						self._SendServerMessageToClient('352 %s %s %s hitbox-irc-proxy hitbox-irc-proxy %s H :0 hitbox-irc-proxy' % (self._username, ''.join(['#', channel]), anon, self._username))						
+				self._SendServerMessageToClient('315 %s %s :End of /WHO list.' % (self._username, ''.join(['#', channel])))
 
 	def _SendServerMessageToClient(self, message):
 		print(''.join(['> ', ':hitbox-irc-proxy ', message]))
