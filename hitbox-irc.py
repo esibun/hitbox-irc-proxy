@@ -164,7 +164,7 @@ class IRCServer:
 				self._receivedLoginMsg = True
 				if self._sendNames == True:
 					self._hitboxChat[channel].names(channel)
-			elif j2['method'] == 'chatMsg':
+			elif j2['method'] == 'chatMsg' and (channel != self._username or self._inOwnChannel):
 				self._SendPrivmsgToClient(name, 'PRIVMSG #%s :%s' % (channel, j2['params']['text']))
 			elif j2['method'] == 'userList':
 				if self._updateNames == True and not self._sendNames:
@@ -361,6 +361,7 @@ class HitboxSocket:
 		self._socket.connect()
 
 	def disconnect(self):
+		self.stopFlag.set()
 		self._socket.close()
 
 	def join(self, channel):
