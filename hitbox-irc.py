@@ -83,7 +83,12 @@ class IRCServer:
 				if line[0] == 'JOIN':
 					if line[1][1:] == self._username:
 						if not self._inOwnChannel:
-							if self._hitboxChat[self._username].stopFlag.isSet():
+							try:
+								if self._hitboxChat[self._username].stopFlag.isSet():
+									self._hitboxChat[self._username].stopFlag = Event()
+									thread = self.NamesUpdateTimerThread(self._hitboxChat[self._username], self._username)
+									thread.start()
+							except AttributeError:
 								self._hitboxChat[self._username].stopFlag = Event()
 								thread = self.NamesUpdateTimerThread(self._hitboxChat[self._username], self._username)
 								thread.start()
@@ -112,7 +117,6 @@ class IRCServer:
 					if line[1][1:] == self._username:
 						self._inOwnChannel = False
 						self._hitboxChat[line[1][1:]].stopFlag.set()
-						self._SendMessageToClient('PART %s' % line[1])
 					else:
 						try:
 							self._hitboxChat[line[1][1:]].disconnect(line[1][1:])
@@ -120,6 +124,7 @@ class IRCServer:
 							del self._hitboxChat[line[1][1:]]
 						except KeyError:
 							pass
+					self._SendMessageToClient('PART %s' % line[1])
 				elif line[0] == 'PING':
 					self._SendRawMessageToClient('PONG %s' % ''.join(line[1:]))
 				elif line[0] == 'PONG':
@@ -127,7 +132,10 @@ class IRCServer:
 						chat.pong()
 				elif line[0] == 'PRIVMSG':
 					self._ownMessage = True
-					self._hitboxChat[line[1][1:]].privmsg(line[1][1:], ' '.join(line[2:])[1:])
+					try:
+						self._hitboxChat[line[1][1:]].privmsg(line[1][1:], ' '.join(line[2:])[1:])
+					except KeyError:
+						self._SendServerMessageToClient('404 %s :You are not in that channel.' % line[1][1:])
 				elif line[0] == 'WHO':
 					if self._receivedLoginMsg == False:
 						self._sendWho = True
@@ -191,11 +199,11 @@ class IRCServer:
 					self._updateNames = False
 					for name in oldnames:
 						if name not in self._nameslist[channel]:
-							nick = name#''.join(name[1:])
+							nick = ''.join(name[1:])
 							self._SendPrivmsgToClient(nick, 'PART #%s' % channel)
 					for name in self._nameslist[channel]:
 						if name not in oldnames:
-							nick = name#''.join(name[1:])
+							nick = ''.join(name[1:])
 							self._SendPrivmsgToClient(''.join(name[1:]), 'JOIN #%s' % channel)
 							if name[0] == '~':
 								self._SendPrivmsgToClient('hitbox-irc-proxy', 'MODE #%s +q %s' % (channel, nick))
