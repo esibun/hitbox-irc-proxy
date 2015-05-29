@@ -70,9 +70,6 @@ class IRCServer:
 						break
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Login successful, connecting to chat...')
 					self._hitboxChat[self._username].connect()
-					self._hitboxChat[self._username].stopFlag = Event()
-					thread = self.NamesUpdateTimerThread(self._hitboxChat[self._username], self._username)
-					thread.start()
 					self._SendServerMessageToClient('NOTICE hitbox-irc-proxy :Connection successful!')
 					self._SendServerMessageToClient('001 %s :Welcome to the IRC Relay Network %s! %s@hitbox-irc-proxy' % (self._username, self._username, self._username))
 					self._SendServerMessageToClient('002 %s :Your host is hitbox-irc-proxy, running version pre-alpha' % self._username)
@@ -115,8 +112,7 @@ class IRCServer:
 						self._SendMessageToClient('PART %s' % line[1])
 					else:
 						try:
-							self._hitboxChat[line[1][1:]].part()
-							self._hitboxChat[line[1][1:]].disconnect()
+							self._hitboxChat[line[1][1:]].disconnect(line[1][1:])
 							self._SendServerMessageToClient('NOTICE :hitbox-irc-proxy :Destroying WS connection for %s' % line[1][1:])
 							del self._hitboxChat[line[1][1:]]
 						except KeyError:
@@ -365,8 +361,9 @@ class HitboxSocket:
 		self._socket.SetIRCObject(self._irc)
 		self._socket.connect()
 
-	def disconnect(self):
+	def disconnect(self, channel):
 		self.stopFlag.set()
+		self.part(channel)
 		self._socket.close()
 
 	def join(self, channel):
