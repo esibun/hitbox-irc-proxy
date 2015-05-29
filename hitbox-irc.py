@@ -1,4 +1,4 @@
-import json, random, requests, socket, time
+import copy, json, random, requests, socket, time
 from ws4py.client.threadedclient import WebSocketClient
 from threading import Thread, Event
 
@@ -86,6 +86,10 @@ class IRCServer:
 				if line[0] == 'JOIN':
 					if line[1][1:] == self._username:
 						if not self._inOwnChannel:
+							if self._hitboxChat[self._username].stopFlag.isSet():
+								self._hitboxChat[self._username].stopFlag = Event()
+								thread = self.NamesUpdateTimerThread(self._hitboxChat[self._username], self._username)
+								thread.start()
 							self._hitboxChat[self._username].join(line[1][1:])
 							self._inOwnChannel = True
 					else:
@@ -107,6 +111,7 @@ class IRCServer:
 				elif line[0] == 'PART':
 					if line[1][1:] == self._username:
 						self._inOwnChannel = False
+						self._hitboxChat[line[1][1:]].stopFlag.set()
 						self._SendMessageToClient('PART %s' % line[1])
 					else:
 						try:
@@ -220,7 +225,7 @@ class IRCServer:
 							nameslist.append('+%s' % anon)
 						else:
 							nameslist.append('x%s' % anon)
-					self._nameslist[channel] = nameslist
+					self._nameslist[channel] = copy.copy(nameslist)
 					for s, item in enumerate(nameslist):
 						if item[0] == 'x':
 							nameslist[s] = ''.join(item[1:])
