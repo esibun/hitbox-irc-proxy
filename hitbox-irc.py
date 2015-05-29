@@ -98,6 +98,9 @@ class IRCServer:
 							self._hitboxChat[line[1][1:]].setLoginInfo(self._username, self._hitboxChat[self._username].grabToken())
 							self._hitboxChat[line[1][1:]].connect()
 							self._hitboxChat[line[1][1:]].join(line[1][1:])
+							self._hitboxChat[line[1][1:]].stopFlag = Event()
+							thread = self.NamesUpdateTimerThread(self._hitboxChat[line[1][1:]], line[1][1:])
+							thread.start()
 					self._SendMessageToClient('JOIN %s' % line[1])
 					self._hitboxChat[line[1][1:]].names(line[1][1:])
 				elif line[0] == 'NAMES':
