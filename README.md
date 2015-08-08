@@ -13,6 +13,8 @@ Usage:
 python hitbox-irc.py
 ````
 
-Connect to your local machine with your favorite IRC client - nick must be your Hitbox username, and server password must be your Hitbox password.
+Connect to your local machine with your favorite IRC client on port 7778 - nick must be your Hitbox username, and server password must be your Hitbox password, for example:
 
-Right now, only joins, nicklist, and messages work, but more is coming very soon(tm).  Script tested working with HexChat and Weechat.
+```/connect 127.0.0.1 7778```
+
+Right now, only joins, nicklist, and messages work.  I'm currently busy working on other projects, however hopefully I will return to implement the rest of the stuff in the near future.  Script tested working with HexChat and Weechat.
