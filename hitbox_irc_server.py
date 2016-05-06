@@ -22,7 +22,7 @@ class IRCServerProtocol(asyncio.Protocol):
         """Called by Protocol whenever a new connection is made to the IRC
         server.
             :transport: The transport to read and write from
-        
+
         """
         peername = transport.get_extra_info("peername")
         self._log.info("Connection from {}".format(peername))
@@ -38,8 +38,11 @@ class IRCServerProtocol(asyncio.Protocol):
         """
         msg = data.decode("UTF-8").split("\n")[:-1]
         for line in msg:
+            # Some IRC clients also send \r with newlines - if this is the case,
+            # we need to remove it.  For HexChat, this is the case, for mIRC this
+            # is not the case.  (see #3)
             line = line.strip() #some IRC clients also send \r - remove this
-            self._log.debug("<< {}".format(line))
+            self._log.info("<< {}".format(line))
             tok = line.split(" ")
             cmd = tok[0].strip().lower()
             # We call the PASS, NICK, and USER commands synchronously to avoid
@@ -91,7 +94,8 @@ class IRCServerProtocol(asyncio.Protocol):
                 return
             elif self._pass == None:
                 self._log.debug("USER before PASS, sending error")
-                text = "464 {} :No password given.  Closing connection".format(self._nick)
+                text = "464 {} :No password given.  Closing connection" \
+                    .format(self._nick)
                 asyncio.ensure_future(self.send(text))
                 asyncio.ensure_future(self.disconnect())
         else:
@@ -123,7 +127,7 @@ class IRCServerProtocol(asyncio.Protocol):
     def send(self, data):
         """Sends the data to the client after prepending the server ID."""
         b = (":hitbox_irc_proxy " + data + "\n").encode("UTF-8")
-        self._log.debug(">> {}".format(b.decode("UTF-8").strip()))
+        self._log.info(">> {}".format(b.decode("UTF-8").strip()))
         self._transport.write(b)
 
     @asyncio.coroutine
@@ -132,7 +136,7 @@ class IRCServerProtocol(asyncio.Protocol):
         self._transport.close()
 
 if __name__ == "__main__":
-    logs = [logging.getLogger(x) for x in ["irc", "asyncio", "main"]]
+    logs = [logging.getLogger(x) for x in ["irc", "asyncio", "main", "token"]]
     ch = logging.StreamHandler()
     ch.setLevel(config.logLevel)
     formatter = logging.Formatter(config.logFormat)
