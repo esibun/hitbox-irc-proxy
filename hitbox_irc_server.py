@@ -44,7 +44,10 @@ class IRCServerProtocol(asyncio.Protocol):
             # we need to remove it.  For HexChat, this is the case, for mIRC this
             # is not the case.  (see #3)
             line = line.strip() #some IRC clients also send \r - remove this
-            self._log.info("<< {}".format(line))
+            if line.split(" ")[0].strip().lower() != "pass":
+                self._log.info("<< {}".format(line))
+            else:
+                self._log.info("<< PASS ***")
             tok = line.split(" ")
             cmd = tok[0].strip().lower()
             # We call the PASS, NICK, and USER commands synchronously to avoid
