@@ -41,7 +41,7 @@ class IRCServer:
 				self._connection.close()
 
 	def _HandleOutgoing(self):
-		data = self._connection.recv(4096).decode('UTF-8').split('\r\n')[:-1]
+		data = self._connection.recv(4096).decode('UTF-8').split('\n')[:-1]
 		for line in data:
 			if line.split(' ')[0] != 'PASS':
 				print(''.join(['< ', line]))
