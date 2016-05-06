@@ -1,5 +1,6 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
 import asyncio, aiohttp, json, random, websockets
+from datetime import datetime
 
 class config:
     API_URL = "https://api.hitbox.tv"
@@ -22,6 +23,7 @@ class HitboxClient(asyncio.Protocol):
         self._token = None
         self._channel = channel
         self._loggedIn = False
+        self._namecolor = "D44F38"
 
     @asyncio.coroutine
     def get_servers(self):
@@ -153,7 +155,7 @@ class HitboxClient(asyncio.Protocol):
 
     @asyncio.coroutine
     def partChannel(self):
-        prefix == "5:::"
+        prefix = "5:::"
         if self._nick == None:
             nick = "UnknownSoldier"
         else:
@@ -177,119 +179,498 @@ class HitboxClient(asyncio.Protocol):
 
     @asyncio.coroutine
     def userList(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "getChannelUserList",
+                    "params": {
+                        "channel": self._channel
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def userInfo(self, nick):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "getChannelUser",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def getChatColors(self):
-        pass #TODO
+        r = yield from aiohttp.request("GET",
+            "{}/chat/colors".format(config.API_URL))
+        d = yield from r.read()
+        j = json.loads(d)
 
     @asyncio.coroutine
     def timeout(self, nick, time=300):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "kickUser",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick,
+                        "token": self._logintoken,
+                        "timeout": time
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def ban(self, nick):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "banUser",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def ipban(self, nick):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "banUser",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick,
+                        "token": self._logintoken,
+                        "banIP": True
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def unban(self, nick):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "unbanUser",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def addMod(self, nick):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "makeMod",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def removeMod(self, nick):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "removeMod",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def setSlow(self, time=0):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "slowMode",
+                    "params": {
+                        "channel": self._channel,
+                        "time": time
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def enableSubOnly(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "slowMode",
+                    "params": {
+                        "channel": self._channel,
+                        "subscriber": True,
+                        "rate": 0
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def disableSubOnly(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "slowMode",
+                    "params": {
+                        "channel": self._channel,
+                        "subscriber": False,
+                        "rate": 0
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def sendMessage(self, text):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "chatMsg",
+                    "params": {
+                        "channel": self._channel,
+                        "name": self._nick,
+                        "nameColor": self._namecolor,
+                        "text": text
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def sendDM(self, nick, text):
-        pass #TODO
-
-    @asyncio.coroutine
-    def mediaLog(self):
-        pass #TODO: implement this or not?
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "directMsg",
+                    "params": {
+                        "channel": self._channel,
+                        "from": self._nick,
+                        "to": nick,
+                        "nameColor": self._namecolor,
+                        "text": text
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def setSticky(self, msg=""):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "motdMsg",
+                    "params": {
+                        "channel": self._channel,
+                        "name": self._nick,
+                        "nameColor": self._namecolor,
+                        "text": msg,
+                        "time": self.get_timestamp()
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def startPoll(self, question, choices, subscribersOnly, followersOnly):
-        pass #TODO
-    
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "createPoll",
+                    "params": {
+                        "channel": self._channel,
+                        "question": question,
+                        "choices": choices,
+                        "subscribersOnly": subscribersOnly,
+                        "followersOnly": followersOnly,
+                        "start_time": self.get_timestamp(),
+                        "nameColor": self._namecolor
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
+
     @asyncio.coroutine
     def pollVote(self, choice):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "voteMsg",
+                    "params": {
+                        "name": self._nick,
+                        "channel": self._channel,
+                        "choice": choice,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def pausePoll(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "pausePoll",
+                    "params": {
+                        "channel": self._channel,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def restartPoll(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "startPoll",
+                    "params": {
+                        "channel": self._channel,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def endPoll(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "endPoll",
+                    "params": {
+                        "channel": self._channel,
+                        "token": self._logintoken
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def createRaffle(self, question, prize, choices, subscribersOnly, followersOnly):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "createRaffle",
+                    "params": {
+                        "channel": self._channel,
+                        "question": question,
+                        "prize": prize,
+                        "choices": choices,
+                        "subscribersOnly": subscribersOnly,
+                        "followersOnly": followersOnly,
+                        "start_time": self.get_timestamp(),
+                        "nameColor": self._namecolor
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def pauseRaffle(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "pauseRaffle",
+                    "params": {
+                        "channel": self._channel
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def endRaffle(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "endRaffle",
+                    "params": {
+                        "channel": self._channel
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def restartRaffle(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "startRaffle",
+                    "params": {
+                        "channel": self._channel
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def raffleVote(self, choice):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "voteRaffle",
+                    "params": {
+                        "name": self._nick,
+                        "channel": self._channel,
+                        "choice": choice
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def pickRaffleWinner(self, choice):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "winnerRaffle",
+                    "params": {
+                        "channel": self._channel,
+                        "answer": choice
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def hideRaffle(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "hideRaffle",
+                    "params": {
+                        "channel": self._channel
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
 
     @asyncio.coroutine
     def cleanupRaffle(self):
-        pass #TODO
+        prefix = "5:::"
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "cleanupRaffle",
+                    "params": {
+                        "channel": self._channel
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
+
+    def get_timestamp(self):
+        return datetime.datetime.now() \
+            .strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 @asyncio.coroutine
 def main_client():
