@@ -1,0 +1,156 @@
+# vim: sts=4:sw=4:et:tw=80:nosta
+import asyncio, config, logging
+
+class IRCServerProtocol(asyncio.Protocol):
+
+    """Handles incoming IRC connections and creates a Hitbox chat connection
+    for each channel.  Each connection creates a new instance of this class, so
+    you may allow multiple clients to connect.  However, keep in mind that there
+    is a limit to the number of connections allowed to Hitbox chat per IP."""
+
+    def __init__(self):
+        """Creates a new IRC server."""
+        asyncio.Protocol.__init__(self)
+
+        self._log = logging.getLogger("irc")
+        self._transport = None
+        self._nick = None
+        self._pass = None
+        self._loggedin = False
+
+    def connection_made(self, transport):
+        """Called by Protocol whenever a new connection is made to the IRC
+        server.
+            :transport: The transport to read and write from
+        
+        """
+        peername = transport.get_extra_info("peername")
+        self._log.info("Connection from {}".format(peername))
+        self._transport = transport
+
+    def data_received(self, data):
+        """Called by Protocol whenever new data is available for the currrent
+        connection.  The purpose of this class is prety much to parse a command,
+        determine whether to call it synchronously or asynchronously, then call
+        the appropriate function.
+            :data: The data received from the client
+
+        """
+        msg = data.decode("UTF-8").split("\n")[:-1]
+        for line in msg:
+            line = line.strip() #some IRC clients also send \r - remove this
+            self._log.debug("<< {}".format(line))
+            tok = line.split(" ")
+            cmd = tok[0].strip().lower()
+            # We call the PASS, NICK, and USER commands synchronously to avoid
+            # having to lock and wait for subsequent commands to finish.  This
+            # also allows us to respond if, for instance, the PASS command was
+            # not sent when the NICK and USER commands have been.
+            if cmd in ["pass", "nick", "user"]: #Call these in sync
+                func = getattr(self, "on_{}".format(cmd), None)
+                if func != None:
+                    self._log.debug("Calling on_{} (synchronously)".format(cmd))
+                    func(tok[1:])
+            else:
+                func = getattr(self, "on_{}".format(cmd), None)
+                if func != None:
+                    self._log.debug("Calling on_{}".format(cmd))
+                    asyncio.ensure_future(func(tok[1:]))
+                else:
+                    self._log.debug("Unknown command {}({})".format(cmd, tok[1:]))
+
+    def on_pass(self, tok):
+        """Called by data_received in response to a PASS command.
+            :tok: An array of tokens parsed from the command
+
+        """
+        self._pass = tok[0]
+        self._log.debug("Pass set to ***")
+
+    def on_nick(self, tok):
+        """Called by data_received in response to a NICK command.
+            :tok: An array of tokens parsed from the command
+
+        """
+        self._nick = tok[0].strip()
+        self._log.debug("Nick set to {}".format(self._nick))
+
+    def on_user(self, tok):
+        """Called by data_received in response to a USER command.  Will block if
+        the nickname has not been set yet.  This command ignores all of the
+        input past the command but handles all of the registration logic.
+            :tok: An array of tokens parsed from the command
+        """
+        if self._loggedin == False:
+            if self._pass != None and self._nick != None:
+                self._log.debug("Logging in user {}".format(self._nick))
+                self._loggedin = True
+                asyncio.ensure_future(self.welcome())
+            elif self._nick == None:
+                self._log.debug("USER before NICK, ignoring")
+                return
+            elif self._pass == None:
+                self._log.debug("USER before PASS, sending error")
+                text = "464 {} :No password given.  Closing connection".format(self._nick)
+                asyncio.ensure_future(self.send(text))
+                asyncio.ensure_future(self.disconnect())
+        else:
+            self._log.debug(
+                "User {} attempted reregistration".format(self._nick))
+            asyncio.ensure_future(
+                self.send("462 {} :You have already registered." \
+                .format(self._nick)))
+
+    @asyncio.coroutine
+    def welcome(self):
+        """Called after a successful registration to alert the clent that they
+        have been logged in."""
+        yield from self.send(
+            ("001 {} :Welcome to the IRC Relay Network {}! {}@hitbox_irc_client")
+            .format(self._nick, self._nick, self._nick))
+        yield from self.send(
+            ("002 {} :Your host is hitbox_irc_proxy, running v2.0")
+            .format(self._nick))
+        yield from self.send(
+            ("003 {} :This server was created 5/6 3:40 PM")
+            .format(self._nick))
+        yield from self.send(
+            ("005 {} PREFIX=(qaohv)~&@%+ CHANMODES=fm " +
+            ":are supported by this server")
+            .format(self._nick))
+
+    @asyncio.coroutine
+    def send(self, data):
+        """Sends the data to the client after prepending the server ID."""
+        b = (":hitbox_irc_proxy " + data + "\n").encode("UTF-8")
+        self._log.debug(">> {}".format(b.decode("UTF-8").strip()))
+        self._transport.write(b)
+
+    @asyncio.coroutine
+    def disconnect(self):
+        """Disconnects the client gracefully."""
+        self._transport.close()
+
+if __name__ == "__main__":
+    logs = [logging.getLogger(x) for x in ["irc", "asyncio", "main"]]
+    ch = logging.StreamHandler()
+    ch.setLevel(config.logLevel)
+    formatter = logging.Formatter(config.logFormat)
+    ch.setFormatter(formatter)
+    for x in logs:
+        x.setLevel(config.logLevel)
+        x.addHandler(ch)
+
+    loop = asyncio.get_event_loop()
+    coro = loop.create_server(IRCServerProtocol, port=7778)
+    server = loop.run_until_complete(coro)
+    thislog = logging.getLogger("main")
+    thislog.info("Serving requests on {}".format(server.sockets[0].getsockname()))
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt as e:
+        thislog.info("Interrupted, closing connections...")
+    finally:
+        server.close()
+        loop.run_until_complete(server.wait_closed())
+        loop.close()

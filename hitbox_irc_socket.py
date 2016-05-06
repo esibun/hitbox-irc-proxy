@@ -1,9 +1,6 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
-import asyncio, aiohttp, json, random, websockets
+import asyncio, aiohttp, config, json, random, websockets
 from datetime import datetime
-
-class config:
-    API_URL = "https://api.hitbox.tv"
 
 class HitboxClient:
 

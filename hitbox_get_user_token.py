@@ -1,7 +1,4 @@
-import asyncio, aiohttp, json, sys
-
-class config:
-	API_URL = "https://api.hitbox.tv"
+import asyncio, aiohttp, config, json, sys
 
 @asyncio.coroutine
 def obtain_token(user, password):
