@@ -80,7 +80,7 @@ class HitboxClient:
     @asyncio.coroutine
     def establish_connection(self):
         """Connect to a Hitbox chat server.
-            :returns: TODO
+            :returns: The websocket used to connect
 
         """
 
@@ -96,6 +96,7 @@ class HitboxClient:
     def close_connection(self):
         """Disconnect from the Hitbox chat server.
             :returns: True on success, False on error
+
         """
 
         try:
@@ -107,11 +108,13 @@ class HitboxClient:
 
     @asyncio.coroutine
     def connect(self):
+        """Connect to a chat server and receive incoming messages."""
         yield from self.establish_connection()
         yield from self.recv()
 
     @asyncio.coroutine
     def recv(self):
+        """Get incoming messages as they come in.  Runs until stopped."""
         while True:
             msg = yield from self._socket.recv()
             print("< {}".format(msg))
@@ -125,11 +128,13 @@ class HitboxClient:
 
     @asyncio.coroutine
     def send(self, msg):
+        """Send messages to the Hitbox chat server."""
         yield from self._socket.send(msg)
         print("> {}".format(msg))
 
     @asyncio.coroutine
     def joinChannel(self):
+        """Joins the channel this socket is assigned to."""
         prefix = "5:::"
         if self._nick == None:
             nick = "UnknownSoldier"
@@ -153,6 +158,8 @@ class HitboxClient:
 
     @asyncio.coroutine
     def partChannel(self):
+        """Logs out of the channel.  This should be called before closing the
+        socket."""
         prefix = "5:::"
         if self._nick == None:
             nick = "UnknownSoldier"
@@ -173,10 +180,12 @@ class HitboxClient:
 
     @asyncio.coroutine
     def pong(self):
+        """Responds to server pings with an identical message."""
         yield from self.send("2::")
 
     @asyncio.coroutine
     def userList(self):
+        """Requests the user list from a channel."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -193,6 +202,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def userInfo(self, nick):
+        """Get information about a user including it's roles.
+            :nick: Nick to get information about
+        
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -210,6 +223,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def getChatColors(self):
+        """Get valid chat colors you can use."""
         r = yield from aiohttp.request("GET",
             "{}/chat/colors".format(config.API_URL))
         d = yield from r.read()
@@ -217,6 +231,12 @@ class HitboxClient:
 
     @asyncio.coroutine
     def timeout(self, nick, time=300):
+        """Timeout (ban temporarily) a user from a channel for a specified
+        amount of seconds.
+            :nick: Target nickname
+            :time: Number of seconds to ban
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -236,6 +256,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def ban(self, nick):
+        """Indefinitely ban a user from a channel.
+            :nick: Target nickname
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -253,6 +277,11 @@ class HitboxClient:
 
     @asyncio.coroutine
     def ipban(self, nick):
+        """Bans a user by IP.  Be careful with IP bans as a single IP can be
+        dealt to a pool of users (e.g. Universities, Offices, ...)
+            :nick: Target nickname
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -272,6 +301,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def unban(self, nick):
+        """Removes a ban on the specified nick.
+            :nick: Target nickname
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -290,6 +323,11 @@ class HitboxClient:
 
     @asyncio.coroutine
     def addMod(self, nick):
+        """Grants the specified nick moderation permissions.  You must be the
+        channel admin.
+            :nick: Target nickname
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -308,6 +346,11 @@ class HitboxClient:
 
     @asyncio.coroutine
     def removeMod(self, nick):
+        """Remove moderation permissions from the specified nick.  You must be
+        the channel owner.
+            :nick: Target nickname
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -326,6 +369,11 @@ class HitboxClient:
 
     @asyncio.coroutine
     def setSlow(self, time=0):
+        """Restrict users to sending only one message every specified number of
+        seconds.
+            :time: Number of seconds to delay
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -343,6 +391,8 @@ class HitboxClient:
 
     @asyncio.coroutine
     def enableSubOnly(self):
+        """Restrict chatting to channel subscribers.  Moderators and higher may
+        still chat."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -361,6 +411,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def disableSubOnly(self):
+        """Lift the restriction on chatting and allow everyone to talk."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -379,6 +430,11 @@ class HitboxClient:
 
     @asyncio.coroutine
     def sendMessage(self, text):
+        """Send a message to the current channel.  Will be rejected if slow mode
+        or subscriber mode is preventing you from talking.
+            :text: Text to send.  Limited to 300 characters
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -398,6 +454,12 @@ class HitboxClient:
 
     @asyncio.coroutine
     def sendDM(self, nick, text):
+        """Send a direct message to another Hitbox user.  Can be rejected if the
+        user is not accepting direct messages.
+            :nick: Target nickname
+            :text: Text to send
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -418,6 +480,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def setSticky(self, msg=""):
+        """Set a sticky message to the given message.
+            :msg: Message to stick.  Omit to remove
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -438,6 +504,14 @@ class HitboxClient:
 
     @asyncio.coroutine
     def startPoll(self, question, choices, subscribersOnly, followersOnly):
+        """Begin a poll with the given options.
+            :question: Question to ask
+            :choices: Array of answers
+            :subscribersOnly: Boolean indicating whether subscribers only can vote.
+            Overrides followersOnly
+            :followersOnly: Boolean indicating whether followers only can vote
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -460,6 +534,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def pollVote(self, choice):
+        """Vote on an active poll.
+            :choice: Integer indicating vote.  Starts at 0
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -479,6 +557,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def pausePoll(self):
+        """Pause the active poll."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -496,6 +575,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def restartPoll(self):
+        """Restart the active poll."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -513,6 +593,8 @@ class HitboxClient:
 
     @asyncio.coroutine
     def endPoll(self):
+        """End the active poll.  Once you end a poll, you cannot restart it -
+        you must create a new poll."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -530,6 +612,14 @@ class HitboxClient:
 
     @asyncio.coroutine
     def createRaffle(self, question, prize, choices, subscribersOnly, followersOnly):
+        """Create a giveaway.  Same as creating a poll, except with a prize.
+            :question: Question to ask
+            :prize: Prize to win
+            :choices: Array of choices to pick from
+            :subscribersOnly: Whether to limit to subscribers
+            :followersOnly: Whether to limit to followers
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -553,6 +643,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def pauseRaffle(self):
+        """Pauses the active giveaway."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -569,6 +660,8 @@ class HitboxClient:
 
     @asyncio.coroutine
     def endRaffle(self):
+        """Ends the active giveaway.  You must be in this state in order to pick
+        a winner."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -585,6 +678,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def restartRaffle(self):
+        """Resumes the giveaway if it is in a paused state."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -601,6 +695,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def raffleVote(self, choice):
+        """Vote in a giveaway with the given choice.
+            :choice: Integer indicating choice (starts at 0)
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -619,6 +717,10 @@ class HitboxClient:
 
     @asyncio.coroutine
     def pickRaffleWinner(self, choice):
+        """Pick a winner, from those who picked the given choice.
+            :choice: Winning choice
+
+        """
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -636,6 +738,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def hideRaffle(self):
+        """Hides the raffle from the UI."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -652,6 +755,7 @@ class HitboxClient:
 
     @asyncio.coroutine
     def cleanupRaffle(self):
+        """Clears the giveaway after ending it and picking the winner."""
         prefix = "5:::"
         j = json.dumps({
             "name": "message",
@@ -667,6 +771,8 @@ class HitboxClient:
         yield from self.send(prefix + j)
 
     def get_timestamp(self):
+        """Obtains the current timestamp in the format that the Hitbox API needs
+        it in."""
         return datetime.datetime.now() \
             .strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
@@ -675,7 +781,7 @@ def main_client():
     hs = HitboxClient(channel="esi")
     yield from hs.connect()
 
-if __namme__ == "__main__":
+if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(main_client())
