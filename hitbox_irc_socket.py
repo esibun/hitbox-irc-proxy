@@ -8,7 +8,7 @@ class HitboxClient(asyncio.Protocol):
 
     """Handles connections to Hitbox WS Chat."""
 
-    def __init__(self, channel, nick=None):
+    def __init__(self, channel, nick=None, logintoken=None):
         """Creates a new Hitbox Client.
             :nick: The user's Hitbox nickname (default None)
 
@@ -17,9 +17,11 @@ class HitboxClient(asyncio.Protocol):
         asyncio.Protocol.__init__(self)
 
         self._nick = nick
+        self._logintoken = logintoken
         self._server = None
         self._token = None
         self._channel = channel
+        self._loggedIn = False
 
     @asyncio.coroutine
     def get_servers(self):
@@ -76,7 +78,7 @@ class HitboxClient(asyncio.Protocol):
         return d
 
     @asyncio.coroutine
-    def connect(self):
+    def establish_connection(self):
         """Connect to a Hitbox chat server.
             :returns: TODO
 
@@ -89,3 +91,213 @@ class HitboxClient(asyncio.Protocol):
                 self._server, self._token))
 
         return self._socket
+
+    @asyncio.coroutine
+    def close_connection(self):
+        """Disconnect from the Hitbox chat server.
+            :returns: True on success, False on error
+        """
+
+        try:
+            yield from self.partChannel()
+            yield from self._socket.close()
+            return True
+        except:
+            return False
+
+    @asyncio.coroutine
+    def connect(self):
+        yield from self.establish_connection()
+        yield from self.recv()
+
+    @asyncio.coroutine
+    def recv(self):
+        while True:
+            msg = yield from self._socket.recv()
+            print("< {}".format(msg))
+
+            if msg == "1::" and not self._loggedIn:
+                print("Logging into channel #{}...".format(self._channel))
+                yield from self.joinChannel()
+            elif msg == "2::":
+                print("PING? PONG!")
+                yield from self.pong()
+
+    @asyncio.coroutine
+    def send(self, msg):
+        yield from self._socket.send(msg)
+        print("> {}".format(msg))
+
+    @asyncio.coroutine
+    def joinChannel(self):
+        prefix = "5:::"
+        if self._nick == None:
+            nick = "UnknownSoldier"
+        else:
+            nick = self._nick
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "joinChannel",
+                    "params": {
+                        "channel": self._channel,
+                        "name": nick,
+                        "token": self._logintoken,
+                        "isAdmin": False
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
+
+    @asyncio.coroutine
+    def partChannel(self):
+        prefix == "5:::"
+        if self._nick == None:
+            nick = "UnknownSoldier"
+        else:
+            nick = self._nick
+        j = json.dumps({
+            "name": "message",
+            "args": [
+                {
+                    "method": "partChannel",
+                    "params": {
+                        "name": nick
+                    }
+                }
+            ]
+        })
+        yield from self.send(prefix + j)
+
+    @asyncio.coroutine
+    def pong(self):
+        yield from self.send("2::")
+
+    @asyncio.coroutine
+    def userList(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def userInfo(self, nick):
+        pass #TODO
+
+    @asyncio.coroutine
+    def getChatColors(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def timeout(self, nick, time=300):
+        pass #TODO
+
+    @asyncio.coroutine
+    def ban(self, nick):
+        pass #TODO
+
+    @asyncio.coroutine
+    def ipban(self, nick):
+        pass #TODO
+
+    @asyncio.coroutine
+    def unban(self, nick):
+        pass #TODO
+
+    @asyncio.coroutine
+    def addMod(self, nick):
+        pass #TODO
+
+    @asyncio.coroutine
+    def removeMod(self, nick):
+        pass #TODO
+
+    @asyncio.coroutine
+    def setSlow(self, time=0):
+        pass #TODO
+
+    @asyncio.coroutine
+    def enableSubOnly(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def disableSubOnly(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def sendMessage(self, text):
+        pass #TODO
+
+    @asyncio.coroutine
+    def sendDM(self, nick, text):
+        pass #TODO
+
+    @asyncio.coroutine
+    def mediaLog(self):
+        pass #TODO: implement this or not?
+
+    @asyncio.coroutine
+    def setSticky(self, msg=""):
+        pass #TODO
+
+    @asyncio.coroutine
+    def startPoll(self, question, choices, subscribersOnly, followersOnly):
+        pass #TODO
+    
+    @asyncio.coroutine
+    def pollVote(self, choice):
+        pass #TODO
+
+    @asyncio.coroutine
+    def pausePoll(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def restartPoll(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def endPoll(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def createRaffle(self, question, prize, choices, subscribersOnly, followersOnly):
+        pass #TODO
+
+    @asyncio.coroutine
+    def pauseRaffle(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def endRaffle(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def restartRaffle(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def raffleVote(self, choice):
+        pass #TODO
+
+    @asyncio.coroutine
+    def pickRaffleWinner(self, choice):
+        pass #TODO
+
+    @asyncio.coroutine
+    def hideRaffle(self):
+        pass #TODO
+
+    @asyncio.coroutine
+    def cleanupRaffle(self):
+        pass #TODO
+
+@asyncio.coroutine
+def main_client():
+    hs = HitboxClient(channel="esi")
+    yield from hs.connect()
+
+loop = asyncio.get_event_loop()
+try:
+    loop.run_until_complete(main_client())
+finally:
+    loop.close()
