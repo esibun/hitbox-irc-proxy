@@ -1,5 +1,6 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
 import aio.testing, asyncio, asynctest, logging, sys, unittest, websockets
+sys.path.append("..")
 from asynctest import CoroutineMock
 from hitbox_irc_socket import HitboxClient
 from unittest import TestCase, TextTestRunner, skipIf
