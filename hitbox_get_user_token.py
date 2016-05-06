@@ -1,7 +1,6 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
-import asyncio, aiohttp, config, logging, json, sys
+import config, logging, json, requests, sys
 
-@asyncio.coroutine
 def obtain_token(user, password):
     """Attempts to grab a login token from Hitbox with the given username and
     password.
@@ -15,13 +14,13 @@ def obtain_token(user, password):
         "pass": password,
         "rememberme": ""
     })
-    r = yield from aiohttp.request("POST", "{}/auth/login".format(config.API_URL), data=j)
-    d = yield from r.read()
-    j = json.loads(d.decode("UTF-8"))
+    log.debug("Making request to /auth/login")
+    r = requests.post("{}/auth/login".format(config.API_URL), data=j)
+    j = r.json()
 
     if "error_msg" in j and j["error_msg"] == "auth_failed":
         log.error("Authentication failed.")
-        return
+        return None
     else:
         log.info("Login successful!")
         log.info("Your authentication token is: " + j["authToken"])

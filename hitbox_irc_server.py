@@ -1,5 +1,6 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
 import asyncio, config, logging
+import hitbox_get_user_token
 
 class IRCServerProtocol(asyncio.Protocol):
 
@@ -17,6 +18,7 @@ class IRCServerProtocol(asyncio.Protocol):
         self._nick = None
         self._pass = None
         self._loggedin = False
+        self._logintoken = None
 
     def connection_made(self, transport):
         """Called by Protocol whenever a new connection is made to the IRC
@@ -87,8 +89,9 @@ class IRCServerProtocol(asyncio.Protocol):
         if self._loggedin == False:
             if self._pass != None and self._nick != None:
                 self._log.debug("Logging in user {}".format(self._nick))
-                self._loggedin = True
-                asyncio.ensure_future(self.welcome())
+                self._logintoken = hitbox_get_user_token \
+                    .obtain_token(self._nick, self._pass)
+                self.authenticate()
             elif self._nick == None:
                 self._log.debug("USER before NICK, ignoring")
                 return
@@ -104,6 +107,16 @@ class IRCServerProtocol(asyncio.Protocol):
             asyncio.ensure_future(
                 self.send("462 {} :You have already registered." \
                 .format(self._nick)))
+
+    def authenticate(self):
+        if self._logintoken == None:
+            text = ("464 {} :Invalid password given.  Closing connection") \
+                .format(self._nick)
+            asyncio.ensure_future(self.send(text))
+            asyncio.ensure_future(self.disconnect())
+        else:
+            self._loggedin = True
+            asyncio.ensure_future(self.welcome())
 
     @asyncio.coroutine
     def welcome(self):
