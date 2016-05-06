@@ -675,8 +675,9 @@ def main_client():
     hs = HitboxClient(channel="esi")
     yield from hs.connect()
 
-loop = asyncio.get_event_loop()
-try:
-    loop.run_until_complete(main_client())
-finally:
-    loop.close()
+if __namme__ == "__main__":
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main_client())
+    finally:
+        loop.close()
