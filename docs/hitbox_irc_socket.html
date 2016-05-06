@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module hitbox_irc_socket</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>hitbox_irc_socket</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/esi/hitbox-irc-proxy/hitbox_irc_socket.py">/home/esi/hitbox-irc-proxy/hitbox_irc_socket.py</a></font></td></tr></table>
+    <p><tt>#&nbsp;vim:&nbsp;sts=4:sw=4:et:tw=80:nosta</tt></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="aiohttp.html">aiohttp</a><br>
+<a href="asyncio.html">asyncio</a><br>
+</td><td width="25%" valign=top><a href="json.html">json</a><br>
+<a href="random.html">random</a><br>
+</td><td width="25%" valign=top><a href="websockets.html">websockets</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="builtins.html#object">builtins.object</a>
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="hitbox_irc_socket.html#HitboxClient">HitboxClient</a>
+</font></dt><dt><font face="helvetica, arial"><a href="hitbox_irc_socket.html#config">config</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="HitboxClient">class <strong>HitboxClient</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Handles&nbsp;connections&nbsp;to&nbsp;Hitbox&nbsp;WS&nbsp;Chat.<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="HitboxClient-__init__"><strong>__init__</strong></a>(self, channel, nick=None, logintoken=None)</dt><dd><tt>Creates&nbsp;a&nbsp;new&nbsp;Hitbox&nbsp;Client.<br>
+:nick:&nbsp;The&nbsp;user's&nbsp;Hitbox&nbsp;nickname&nbsp;(default&nbsp;None)</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-addMod"><strong>addMod</strong></a>(self, nick)</dt><dd><tt>Grants&nbsp;the&nbsp;specified&nbsp;nick&nbsp;moderation&nbsp;permissions.&nbsp;&nbsp;You&nbsp;must&nbsp;be&nbsp;the<br>
+channel&nbsp;admin.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:nick:&nbsp;Target&nbsp;nickname</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-ban"><strong>ban</strong></a>(self, nick)</dt><dd><tt>Indefinitely&nbsp;ban&nbsp;a&nbsp;user&nbsp;from&nbsp;a&nbsp;channel.<br>
+:nick:&nbsp;Target&nbsp;nickname</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-cleanupRaffle"><strong>cleanupRaffle</strong></a>(self)</dt><dd><tt>Clears&nbsp;the&nbsp;giveaway&nbsp;after&nbsp;ending&nbsp;it&nbsp;and&nbsp;picking&nbsp;the&nbsp;winner.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-close_connection"><strong>close_connection</strong></a>(self)</dt><dd><tt>Disconnect&nbsp;from&nbsp;the&nbsp;Hitbox&nbsp;chat&nbsp;server.<br>
+:returns:&nbsp;True&nbsp;on&nbsp;success,&nbsp;False&nbsp;on&nbsp;error</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-connect"><strong>connect</strong></a>(self)</dt><dd><tt>Connect&nbsp;to&nbsp;a&nbsp;chat&nbsp;server&nbsp;and&nbsp;receive&nbsp;incoming&nbsp;messages.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-createRaffle"><strong>createRaffle</strong></a>(self, question, prize, choices, subscribersOnly, followersOnly)</dt><dd><tt>Create&nbsp;a&nbsp;giveaway.&nbsp;&nbsp;Same&nbsp;as&nbsp;creating&nbsp;a&nbsp;poll,&nbsp;except&nbsp;with&nbsp;a&nbsp;prize.<br>
+:question:&nbsp;Question&nbsp;to&nbsp;ask<br>
+:prize:&nbsp;Prize&nbsp;to&nbsp;win<br>
+:choices:&nbsp;Array&nbsp;of&nbsp;choices&nbsp;to&nbsp;pick&nbsp;from<br>
+:subscribersOnly:&nbsp;Whether&nbsp;to&nbsp;limit&nbsp;to&nbsp;subscribers<br>
+:followersOnly:&nbsp;Whether&nbsp;to&nbsp;limit&nbsp;to&nbsp;followers</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-disableSubOnly"><strong>disableSubOnly</strong></a>(self)</dt><dd><tt>Lift&nbsp;the&nbsp;restriction&nbsp;on&nbsp;chatting&nbsp;and&nbsp;allow&nbsp;everyone&nbsp;to&nbsp;talk.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-enableSubOnly"><strong>enableSubOnly</strong></a>(self)</dt><dd><tt>Restrict&nbsp;chatting&nbsp;to&nbsp;channel&nbsp;subscribers.&nbsp;&nbsp;Moderators&nbsp;and&nbsp;higher&nbsp;may<br>
+still&nbsp;chat.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-endPoll"><strong>endPoll</strong></a>(self)</dt><dd><tt>End&nbsp;the&nbsp;active&nbsp;poll.&nbsp;&nbsp;Once&nbsp;you&nbsp;end&nbsp;a&nbsp;poll,&nbsp;you&nbsp;cannot&nbsp;restart&nbsp;it&nbsp;-<br>
+you&nbsp;must&nbsp;create&nbsp;a&nbsp;new&nbsp;poll.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-endRaffle"><strong>endRaffle</strong></a>(self)</dt><dd><tt>Ends&nbsp;the&nbsp;active&nbsp;giveaway.&nbsp;&nbsp;You&nbsp;must&nbsp;be&nbsp;in&nbsp;this&nbsp;state&nbsp;in&nbsp;order&nbsp;to&nbsp;pick<br>
+a&nbsp;winner.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-establish_connection"><strong>establish_connection</strong></a>(self)</dt><dd><tt>Connect&nbsp;to&nbsp;a&nbsp;Hitbox&nbsp;chat&nbsp;server.<br>
+:returns:&nbsp;The&nbsp;websocket&nbsp;used&nbsp;to&nbsp;connect</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-getChatColors"><strong>getChatColors</strong></a>(self)</dt><dd><tt>Get&nbsp;valid&nbsp;chat&nbsp;colors&nbsp;you&nbsp;can&nbsp;use.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-get_servers"><strong>get_servers</strong></a>(self)</dt><dd><tt>Obtain&nbsp;the&nbsp;WS&nbsp;server&nbsp;list&nbsp;from&nbsp;Hitbox.<br>
+:returns:&nbsp;The&nbsp;array&nbsp;of&nbsp;available&nbsp;servers.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-get_timestamp"><strong>get_timestamp</strong></a>(self)</dt><dd><tt>Obtains&nbsp;the&nbsp;current&nbsp;timestamp&nbsp;in&nbsp;the&nbsp;format&nbsp;that&nbsp;the&nbsp;Hitbox&nbsp;API&nbsp;needs<br>
+it&nbsp;in.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-get_token"><strong>get_token</strong></a>(self)</dt><dd><tt>Obtain&nbsp;a&nbsp;token&nbsp;from&nbsp;the&nbsp;selected&nbsp;server.<br>
+:returns:&nbsp;The&nbsp;WebSocket&nbsp;ID&nbsp;from&nbsp;the&nbsp;selected&nbsp;server.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-hideRaffle"><strong>hideRaffle</strong></a>(self)</dt><dd><tt>Hides&nbsp;the&nbsp;raffle&nbsp;from&nbsp;the&nbsp;UI.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-ipban"><strong>ipban</strong></a>(self, nick)</dt><dd><tt>Bans&nbsp;a&nbsp;user&nbsp;by&nbsp;IP.&nbsp;&nbsp;Be&nbsp;careful&nbsp;with&nbsp;IP&nbsp;bans&nbsp;as&nbsp;a&nbsp;single&nbsp;IP&nbsp;can&nbsp;be<br>
+dealt&nbsp;to&nbsp;a&nbsp;pool&nbsp;of&nbsp;users&nbsp;(e.g.&nbsp;Universities,&nbsp;Offices,&nbsp;...)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:nick:&nbsp;Target&nbsp;nickname</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-joinChannel"><strong>joinChannel</strong></a>(self)</dt><dd><tt>Joins&nbsp;the&nbsp;channel&nbsp;this&nbsp;socket&nbsp;is&nbsp;assigned&nbsp;to.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-partChannel"><strong>partChannel</strong></a>(self)</dt><dd><tt>Logs&nbsp;out&nbsp;of&nbsp;the&nbsp;channel.&nbsp;&nbsp;This&nbsp;should&nbsp;be&nbsp;called&nbsp;before&nbsp;closing&nbsp;the<br>
+socket.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-pausePoll"><strong>pausePoll</strong></a>(self)</dt><dd><tt>Pause&nbsp;the&nbsp;active&nbsp;poll.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-pauseRaffle"><strong>pauseRaffle</strong></a>(self)</dt><dd><tt>Pauses&nbsp;the&nbsp;active&nbsp;giveaway.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-pickRaffleWinner"><strong>pickRaffleWinner</strong></a>(self, choice)</dt><dd><tt>Pick&nbsp;a&nbsp;winner,&nbsp;from&nbsp;those&nbsp;who&nbsp;picked&nbsp;the&nbsp;given&nbsp;choice.<br>
+:choice:&nbsp;Winning&nbsp;choice</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-pollVote"><strong>pollVote</strong></a>(self, choice)</dt><dd><tt>Vote&nbsp;on&nbsp;an&nbsp;active&nbsp;poll.<br>
+:choice:&nbsp;Integer&nbsp;indicating&nbsp;vote.&nbsp;&nbsp;Starts&nbsp;at&nbsp;0</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-pong"><strong>pong</strong></a>(self)</dt><dd><tt>Responds&nbsp;to&nbsp;server&nbsp;pings&nbsp;with&nbsp;an&nbsp;identical&nbsp;message.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-raffleVote"><strong>raffleVote</strong></a>(self, choice)</dt><dd><tt>Vote&nbsp;in&nbsp;a&nbsp;giveaway&nbsp;with&nbsp;the&nbsp;given&nbsp;choice.<br>
+:choice:&nbsp;Integer&nbsp;indicating&nbsp;choice&nbsp;(starts&nbsp;at&nbsp;0)</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-recv"><strong>recv</strong></a>(self)</dt><dd><tt>Get&nbsp;incoming&nbsp;messages&nbsp;as&nbsp;they&nbsp;come&nbsp;in.&nbsp;&nbsp;Runs&nbsp;until&nbsp;stopped.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-removeMod"><strong>removeMod</strong></a>(self, nick)</dt><dd><tt>Remove&nbsp;moderation&nbsp;permissions&nbsp;from&nbsp;the&nbsp;specified&nbsp;nick.&nbsp;&nbsp;You&nbsp;must&nbsp;be<br>
+the&nbsp;channel&nbsp;owner.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:nick:&nbsp;Target&nbsp;nickname</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-restartPoll"><strong>restartPoll</strong></a>(self)</dt><dd><tt>Restart&nbsp;the&nbsp;active&nbsp;poll.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-restartRaffle"><strong>restartRaffle</strong></a>(self)</dt><dd><tt>Resumes&nbsp;the&nbsp;giveaway&nbsp;if&nbsp;it&nbsp;is&nbsp;in&nbsp;a&nbsp;paused&nbsp;state.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-select_server"><strong>select_server</strong></a>(self, list=None)</dt><dd><tt>Obtain&nbsp;a&nbsp;random&nbsp;server&nbsp;from&nbsp;the&nbsp;server&nbsp;list.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:list:&nbsp;List&nbsp;of&nbsp;servers&nbsp;to&nbsp;select&nbsp;from&nbsp;(default&nbsp;None)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:returns:&nbsp;A&nbsp;string&nbsp;containing&nbsp;a&nbsp;Hitbox&nbsp;WS&nbsp;server.<br>
+&nbsp;<br>
+If&nbsp;list&nbsp;is&nbsp;None,&nbsp;obtain&nbsp;from&nbsp;<a href="#HitboxClient-get_servers">get_servers</a>()</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-send"><strong>send</strong></a>(self, msg)</dt><dd><tt>Send&nbsp;messages&nbsp;to&nbsp;the&nbsp;Hitbox&nbsp;chat&nbsp;server.</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-sendDM"><strong>sendDM</strong></a>(self, nick, text)</dt><dd><tt>Send&nbsp;a&nbsp;direct&nbsp;message&nbsp;to&nbsp;another&nbsp;Hitbox&nbsp;user.&nbsp;&nbsp;Can&nbsp;be&nbsp;rejected&nbsp;if&nbsp;the<br>
+user&nbsp;is&nbsp;not&nbsp;accepting&nbsp;direct&nbsp;messages.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:nick:&nbsp;Target&nbsp;nickname<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:text:&nbsp;Text&nbsp;to&nbsp;send</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-sendMessage"><strong>sendMessage</strong></a>(self, text)</dt><dd><tt>Send&nbsp;a&nbsp;message&nbsp;to&nbsp;the&nbsp;current&nbsp;channel.&nbsp;&nbsp;Will&nbsp;be&nbsp;rejected&nbsp;if&nbsp;slow&nbsp;mode<br>
+or&nbsp;subscriber&nbsp;mode&nbsp;is&nbsp;preventing&nbsp;you&nbsp;from&nbsp;talking.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:text:&nbsp;Text&nbsp;to&nbsp;send.&nbsp;&nbsp;Limited&nbsp;to&nbsp;300&nbsp;characters</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-setSlow"><strong>setSlow</strong></a>(self, time=0)</dt><dd><tt>Restrict&nbsp;users&nbsp;to&nbsp;sending&nbsp;only&nbsp;one&nbsp;message&nbsp;every&nbsp;specified&nbsp;number&nbsp;of<br>
+seconds.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:time:&nbsp;Number&nbsp;of&nbsp;seconds&nbsp;to&nbsp;delay</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-setSticky"><strong>setSticky</strong></a>(self, msg='')</dt><dd><tt>Set&nbsp;a&nbsp;sticky&nbsp;message&nbsp;to&nbsp;the&nbsp;given&nbsp;message.<br>
+:msg:&nbsp;Message&nbsp;to&nbsp;stick.&nbsp;&nbsp;Omit&nbsp;to&nbsp;remove</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-startPoll"><strong>startPoll</strong></a>(self, question, choices, subscribersOnly, followersOnly)</dt><dd><tt>Begin&nbsp;a&nbsp;poll&nbsp;with&nbsp;the&nbsp;given&nbsp;options.<br>
+:question:&nbsp;Question&nbsp;to&nbsp;ask<br>
+:choices:&nbsp;Array&nbsp;of&nbsp;answers<br>
+:subscribersOnly:&nbsp;Boolean&nbsp;indicating&nbsp;whether&nbsp;subscribers&nbsp;only&nbsp;can&nbsp;vote.<br>
+Overrides&nbsp;followersOnly<br>
+:followersOnly:&nbsp;Boolean&nbsp;indicating&nbsp;whether&nbsp;followers&nbsp;only&nbsp;can&nbsp;vote</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-timeout"><strong>timeout</strong></a>(self, nick, time=300)</dt><dd><tt>Timeout&nbsp;(ban&nbsp;temporarily)&nbsp;a&nbsp;user&nbsp;from&nbsp;a&nbsp;channel&nbsp;for&nbsp;a&nbsp;specified<br>
+amount&nbsp;of&nbsp;seconds.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:nick:&nbsp;Target&nbsp;nickname<br>
+&nbsp;&nbsp;&nbsp;&nbsp;:time:&nbsp;Number&nbsp;of&nbsp;seconds&nbsp;to&nbsp;ban</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-unban"><strong>unban</strong></a>(self, nick)</dt><dd><tt>Removes&nbsp;a&nbsp;ban&nbsp;on&nbsp;the&nbsp;specified&nbsp;nick.<br>
+:nick:&nbsp;Target&nbsp;nickname</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-userInfo"><strong>userInfo</strong></a>(self, nick)</dt><dd><tt>Get&nbsp;information&nbsp;about&nbsp;a&nbsp;user&nbsp;including&nbsp;it's&nbsp;roles.<br>
+:nick:&nbsp;Nick&nbsp;to&nbsp;get&nbsp;information&nbsp;about</tt></dd></dl>
+
+<dl><dt><a name="HitboxClient-userList"><strong>userList</strong></a>(self)</dt><dd><tt>Requests&nbsp;the&nbsp;user&nbsp;list&nbsp;from&nbsp;a&nbsp;channel.</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table> <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="config">class <strong>config</strong></a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr><td bgcolor="#ffc8d8"><tt>&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<hr>
+Data and other attributes defined here:<br>
+<dl><dt><strong>API_URL</strong> = 'https://api.hitbox.tv'</dl>
+
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-main_client"><strong>main_client</strong></a>()</dt></dl>
+</td></tr></table>
+</body></html>
