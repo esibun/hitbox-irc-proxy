@@ -5,7 +5,7 @@ from datetime import datetime
 class config:
     API_URL = "https://api.hitbox.tv"
 
-class HitboxClient(asyncio.Protocol):
+class HitboxClient:
 
     """Handles connections to Hitbox WS Chat."""
 
@@ -14,8 +14,6 @@ class HitboxClient(asyncio.Protocol):
             :nick: The user's Hitbox nickname (default None)
 
         """
-
-        asyncio.Protocol.__init__(self)
 
         self._nick = nick
         self._logintoken = logintoken
