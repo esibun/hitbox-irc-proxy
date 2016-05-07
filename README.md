@@ -5,14 +5,11 @@ IRC proxy for Hitbox.tv
 This is the rewrite branch for hitbox-irc-proxy.  Currently, the code isn't ready, however you can check out progress by running `python hitbox_irc_socket.py`.  This will connect to my Hitbox channel as an anonymous user.  Most of the API commands are currently unimplemented, and the IRC layer is completely unimplemented.
 
 ## Requirements
-Python must be ≥ 3.4
+Python must be ≥ 3.4 (3.3 may also work if you install asyncio)
 Required python modules:
 - aiohttp
+- requests
 - websockets
-
-Additional required python modules for running tests:
-- aio.testing
-- asynctest
 
 If you are missing any of them, you may install them with either `easy_install` or `pip install`.  *Please be careful* - some distributions come with both Python 2 and Python 3 - if this is the case, you must make sure you are installing the modules to the correct Python version.  For example, on Ubuntu you must put a 3 after any commands to target your Python 3 installation.
 
@@ -35,5 +32,6 @@ Feel free to help contribute to the project by submitting a pull request.  Pleas
 
 - All methods must be documented with pydoc
 - Indents are with 4 spaces
-- Lines must not exceed 80 characters in width
-- Your commit must not create errors and must also pass all tests
+- Lines must not exceed 80 characters in width.  If you exceed this, consider creating a new method, using a variable, or splitting the line in a place that makes sense.
+- New methods should be appropriately spaced - group expressions together that go together
+- Your commit must not create errors
