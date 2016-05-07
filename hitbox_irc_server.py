@@ -1,6 +1,7 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
-import asyncio, config, logging
+import asyncio, config, json, logging
 import hitbox_get_user_token
+from hitbox_irc_socket import HitboxClient
 
 class IRCServerProtocol(asyncio.Protocol):
 
@@ -19,6 +20,7 @@ class IRCServerProtocol(asyncio.Protocol):
         self._pass = None
         self._loggedin = False
         self._logintoken = None
+        self._channels = {}
 
     def connection_made(self, transport):
         """Called by Protocol whenever a new connection is made to the IRC
@@ -111,7 +113,56 @@ class IRCServerProtocol(asyncio.Protocol):
                 self.send("462 {} :You have already registered." \
                 .format(self._nick)))
 
+    @asyncio.coroutine
+    def on_join(self, tok):
+        """Called by data_received in response to a JOIN command.  This command
+        handles the creation of a new Hitbox WS object, and sends it off to the
+        handle_socket function to handle incoming messages.
+            :tok: An array of tokens parsed from the command
+        """
+        if self._loggedin == False:
+            self._log.debug("JOIN before registration, ignoring")
+        else:
+            channel = tok[0].lstrip("#").lower()
+            self._log.debug("Joining {}".format(channel))
+            self._channels[channel] = HitboxClient(channel, self._nick,
+            self._logintoken)
+            asyncio.ensure_future(self._channels[channel].connect())
+            yield from self.handle_socket(channel)
+
+    @asyncio.coroutine
+    def handle_socket(self, channel):
+        """This command handles incoming messages from the Hitbox WS object.
+        When the user parts the channel, the client object is set to None,
+        so the while loop can break out.  Individual messages are handed off to
+        a handle_*** command.
+            :channel: Channel name to handle incoming messages for
+        """
+        self._log.debug("Socket handler for {} established." \
+            .format(channel))
+        while self._channels[channel] != None:
+            msg = yield from self._channels[channel].getNextMessage()
+            self._log.debug("incoming message from {}: {}" \
+                .format(channel, msg))
+            j = json.loads(msg)
+            #yes, this code is correct
+            cmd = json.loads(j["args"][0])["method"]
+            func = getattr(self, "handle_{}".format(cmd), None)
+            if func != None:
+                self._log.debug("Calling on_{}".format(cmd))
+                asyncio.ensure_future(json.loads(j["args"][0]))
+            else:
+                self._log.warning("Unknown HB command {}({})".format(cmd, j))
+
+    @asyncio.coroutine
+    def handle_loginMsg(self, json):
+        """This command handles incoming join messages.  This is sent by the
+        server in response to a JOIN command issued by the client."""
+        yield from self.send("JOIN #{}".format(json["channel"]))
+
     def authenticate(self):
+        """Check the authentication result.  If OK, send the welcome message.
+        If it fails, disconnect the user."""
         if self._logintoken == None:
             text = ("464 {} :Invalid password given.  Closing connection") \
                 .format(self._nick)
@@ -152,7 +203,8 @@ class IRCServerProtocol(asyncio.Protocol):
         self._transport.close()
 
 if __name__ == "__main__":
-    logs = [logging.getLogger(x) for x in ["irc", "asyncio", "main", "token"]]
+    logs = [logging.getLogger(x) for x in ["irc", "asyncio", "main", "token",
+    "ws"]]
     ch = logging.StreamHandler()
     ch.setLevel(config.logLevel)
     formatter = logging.Formatter(config.logFormat)

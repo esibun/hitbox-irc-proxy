@@ -1,5 +1,5 @@
 # vim: sts=4:sw=4:et:tw=80:nosta
-import asyncio, aiohttp, config, json, random, websockets
+import asyncio, aiohttp, config, json, logging, random, websockets
 from datetime import datetime
 
 class HitboxClient:
@@ -19,6 +19,9 @@ class HitboxClient:
         self._channel = channel
         self._loggedIn = False
         self._namecolor = "D44F38"
+        self._waitingmessages = []
+        self._dispatcher = asyncio.Semaphore(value=0)
+        self._log = logging.getLogger("ws")
 
     @asyncio.coroutine
     def get_servers(self):
@@ -114,20 +117,39 @@ class HitboxClient:
         """Get incoming messages as they come in.  Runs until stopped."""
         while True:
             msg = yield from self._socket.recv()
-            print("< {}".format(msg))
+            self._log.debug("< {}".format(msg))
 
             if msg == "1::" and not self._loggedIn:
-                print("Logging into channel #{}...".format(self._channel))
+                self._log.debug("Logging into channel #{}...".format(self._channel))
                 yield from self.joinChannel()
             elif msg == "2::":
-                print("PING? PONG!")
+                self._log.debug("PING? PONG!")
                 yield from self.pong()
+            else:
+                json = msg[4:]
+                yield from self.dispatchMessage(json)
 
     @asyncio.coroutine
     def send(self, msg):
         """Send messages to the Hitbox chat server."""
         yield from self._socket.send(msg)
-        print("> {}".format(msg))
+        self._log.debug("> {}".format(msg))
+
+    @asyncio.coroutine
+    def getNextMessage(self):
+        """Grabs the next incoming message and sends it to the object using the
+        socket.  Blocks if a message is not available."""
+        yield from self._dispatcher.acquire()
+        return self._waitingmessages.pop(0)
+
+    @asyncio.coroutine
+    def dispatchMessage(self, msg):
+        """Adds a message to the message queue and signals that a message is
+        available, unblocking anything calling getNextMessage()"""
+        self._waitingmessages.append(msg)
+        self._dispatcher.release()
+        self._log.debug("Message dispatched.  Sem: {}" \
+            .format(repr(self._dispatcher)))
 
     @asyncio.coroutine
     def joinChannel(self):
