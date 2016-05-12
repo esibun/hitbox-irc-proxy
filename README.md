@@ -2,7 +2,7 @@
 IRC proxy for Hitbox.tv
 
 ## Info
-This is the rewrite branch for hitbox-irc-proxy.  Currently, the code isn't ready, however you can check out progress by running `python hitbox_irc_socket.py`.  This will connect to my Hitbox channel as an anonymous user.  Most of the API commands are currently unimplemented, and the IRC layer is completely unimplemented.
+This is the rewrite for hitbox-irc-proxy.  Currently, only the basics are up and running, however implementing the rest of the commands should be relatively easy thanks to the way the code is written now.  Most of the API commands are currently unimplemented, however the basics work (joining, sending messages).
 
 ## Requirements
 Python must be ≥ 3.4 (3.3 may also work if you install asyncio)
@@ -13,11 +13,13 @@ Required python modules:
 
 If you are missing any of them, you may install them with either `easy_install` or `pip install`.  *Please be careful* - some distributions come with both Python 2 and Python 3 - if this is the case, you must make sure you are installing the modules to the correct Python version.  For example, on Ubuntu you must put a 3 after any commands to target your Python 3 installation.
 
-## Usage
+## Configuration
+Hitbox-irc-proxy supports basic configuration by modifying the parameters in the `config.py` file.  You may change the log format, or change the logging level.  In the future, there will be more options here.
 
+## Usage
 Run this command in a console:
 ````
-python hitbox_irc.py
+python hitbox_irc_server.py
 ````
 
 You may need to substitute `python` with `python3` on some Linux distributions such as Ubuntu.
