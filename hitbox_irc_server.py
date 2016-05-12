@@ -120,7 +120,7 @@ class IRCServerProtocol(asyncio.Protocol):
         handle_socket function to handle incoming messages.
             :tok: An array of tokens parsed from the command
         """
-        if self._loggedin == False:
+        if not self._loggedin:
             self._log.debug("JOIN before registration, ignoring")
         else:
             channel = tok[0].lstrip("#").lower()
@@ -129,6 +129,49 @@ class IRCServerProtocol(asyncio.Protocol):
             self._logintoken)
             asyncio.ensure_future(self._channels[channel].connect())
             yield from self.handle_socket(channel)
+
+    @asyncio.coroutine
+    def on_part(self, tok):
+        """Called by data_received in response to a PART command.  This command
+        handles the deletion of a specific Hitbox WS object.
+            :tok: An array of tokens parsed from the command
+        """
+        if self._loggedin:
+            c = tok[0].lstrip("#").lower()
+            self._log.debug(tok[0])
+            self._log.debug(tok[0].lstrip("#").lower())
+            yield from self._channels[c].close_connection()
+            self._channels[c] = None
+            self._log.debug("Connection to #{} closed." \
+                .format(c))
+
+    @asyncio.coroutine
+    def on_quit(self, tok):
+        """Called by data_received in response to a QUIT command.  This command
+        handles the deletion of all associated Hitbox WS objects.
+            :tok: An array of tokens parsed from the command
+        """
+        if self._loggedin:
+            for k, c in self._channels.items():
+                try:
+                    yield from c.close_connection()
+                    self._channels[k] = None
+                    self._log.debug("Connection to #{} closed." \
+                        .format(k))
+                except AttributeError:
+                    self._log.debug("All connections closed due to disconnect.")
+
+    @asyncio.coroutine
+    def on_privmsg(self, tok):
+        """Called by data_received in response to a PRIVMSG command.  This
+        command handles sending messages to either another user or a chhannel.
+            :tok: An array of tokens parsed from the command
+        """
+        if self._loggedin:
+            if tok[0][0] == "#":
+                c = tok[0].lstrip("#").lower()
+                t = "".join(tok[1:])[1:]
+                yield from self._channels[c].sendMessage(t)
 
     @asyncio.coroutine
     def handle_socket(self, channel):
@@ -150,15 +193,30 @@ class IRCServerProtocol(asyncio.Protocol):
             func = getattr(self, "handle_{}".format(cmd), None)
             if func != None:
                 self._log.debug("Calling on_{}".format(cmd))
-                asyncio.ensure_future(json.loads(j["args"][0]))
+                asyncio.ensure_future(func(json.loads(j["args"][0])))
             else:
                 self._log.warning("Unknown HB command {}({})".format(cmd, j))
 
     @asyncio.coroutine
     def handle_loginMsg(self, json):
         """This command handles incoming join messages.  This is sent by the
-        server in response to a JOIN command issued by the client."""
-        yield from self.send("JOIN #{}".format(json["channel"]))
+        server in response to a JOIN command issued by the client.
+            :json: Parsed JSON.
+        """
+        yield from self.sendn("JOIN :#{}".format(json["params"]["channel"]))
+
+    @asyncio.coroutine
+    def handle_chatMsg(self, json):
+        """This command handles incoming chat messages.  This is sent by the
+        server either because of buffered text on a JOIN, or because someone
+        actually sent a message.  If it was due to the first,
+        json["params"]["buffer"] will be set to true.
+            :json: Parsed JSON.
+        """
+        if json["params"]["name"] != self._nick:
+            yield from self.sendn("PRIVMSG #{} :{}" \
+                .format(json["params"]["channel"], json["params"]["text"]),
+                nick=json["params"]["name"])
 
     def authenticate(self):
         """Check the authentication result.  If OK, send the welcome message.
@@ -177,7 +235,7 @@ class IRCServerProtocol(asyncio.Protocol):
         """Called after a successful registration to alert the clent that they
         have been logged in."""
         yield from self.send(
-            ("001 {} :Welcome to the IRC Relay Network {}! {}@hitbox_irc_client")
+            ("001 {} :Welcome to the IRC Relay Network {}! {}@hitbox_irc_proxy")
             .format(self._nick, self._nick, self._nick))
         yield from self.send(
             ("002 {} :Your host is hitbox_irc_proxy, running v2.0")
@@ -194,6 +252,16 @@ class IRCServerProtocol(asyncio.Protocol):
     def send(self, data):
         """Sends the data to the client after prepending the server ID."""
         b = (":hitbox_irc_proxy " + data + "\n").encode("UTF-8")
+        self._log.info(">> {}".format(b.decode("UTF-8").strip()))
+        self._transport.write(b)
+
+    @asyncio.coroutine
+    def sendn(self, data, nick=None):
+        """Sends the data to the client after prepending the nick info."""
+        if nick == None:
+            nick = self._nick
+        b = (":{}!{}@hitbox_irc_proxy " \
+            .format(nick, nick) + data + "\n").encode("UTF-8")
         self._log.info(">> {}".format(b.decode("UTF-8").strip()))
         self._transport.write(b)
 
@@ -217,7 +285,8 @@ if __name__ == "__main__":
     coro = loop.create_server(IRCServerProtocol, port=7778)
     server = loop.run_until_complete(coro)
     thislog = logging.getLogger("main")
-    thislog.info("Serving requests on {}".format(server.sockets[0].getsockname()))
+    thislog.info("Serving requests on {}" \
+        .format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt as e:

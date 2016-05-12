@@ -116,11 +116,17 @@ class HitboxClient:
     def recv(self):
         """Get incoming messages as they come in.  Runs until stopped."""
         while True:
-            msg = yield from self._socket.recv()
+            try:
+                msg = yield from self._socket.recv()
+            except websockets.exceptions.ConnectionClosed:
+                self._log.debug("Connection closed.  No longer receiving " +
+                    "incoming messages.")
+                break
             self._log.debug("< {}".format(msg))
 
             if msg == "1::" and not self._loggedIn:
-                self._log.debug("Logging into channel #{}...".format(self._channel))
+                self._log.debug("Logging into channel #{}..." \
+                    .format(self._channel))
                 yield from self.joinChannel()
             elif msg == "2::":
                 self._log.debug("PING? PONG!")
@@ -526,8 +532,8 @@ class HitboxClient:
         """Begin a poll with the given options.
             :question: Question to ask
             :choices: Array of answers
-            :subscribersOnly: Boolean indicating whether subscribers only can vote.
-            Overrides followersOnly
+            :subscribersOnly: Boolean indicating whether subscribers only can
+                vote.  Overrides followersOnly
             :followersOnly: Boolean indicating whether followers only can vote
 
         """
