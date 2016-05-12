@@ -800,15 +800,3 @@ class HitboxClient:
         it in."""
         return datetime.datetime.now() \
             .strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
-
-@asyncio.coroutine
-def main_client():
-    hs = HitboxClient(channel="esi")
-    yield from hs.connect()
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(main_client())
-    finally:
-        loop.close()
