@@ -65,7 +65,7 @@ class IRCServerProtocol(asyncio.Protocol):
                 func = getattr(self, "on_{}".format(cmd), None)
                 if func != None:
                     self._log.debug("Calling on_{}".format(cmd))
-                    asyncio.ensure_future(func(tok[1:]))
+                    asyncio.async(func(tok[1:]))
                 else:
                     self._log.debug("Unknown command {}({})".format(cmd, tok[1:]))
 
@@ -104,12 +104,12 @@ class IRCServerProtocol(asyncio.Protocol):
                 self._log.debug("USER before PASS, sending error")
                 text = "464 {} :No password given.  Closing connection" \
                     .format(self._nick)
-                asyncio.ensure_future(self.send(text))
-                asyncio.ensure_future(self.disconnect())
+                asyncio.async(self.send(text))
+                asyncio.async(self.disconnect())
         else:
             self._log.debug(
                 "User {} attempted reregistration".format(self._nick))
-            asyncio.ensure_future(
+            asyncio.async(
                 self.send("462 {} :You have already registered." \
                 .format(self._nick)))
 
@@ -127,7 +127,7 @@ class IRCServerProtocol(asyncio.Protocol):
             self._log.debug("Joining {}".format(channel))
             self._channels[channel] = HitboxClient(channel, self._nick,
             self._logintoken)
-            asyncio.ensure_future(self._channels[channel].connect())
+            asyncio.async(self._channels[channel].connect())
             yield from self.handle_socket(channel)
 
     @asyncio.coroutine
@@ -193,7 +193,7 @@ class IRCServerProtocol(asyncio.Protocol):
             func = getattr(self, "handle_{}".format(cmd), None)
             if func != None:
                 self._log.debug("Calling on_{}".format(cmd))
-                asyncio.ensure_future(func(json.loads(j["args"][0])))
+                asyncio.async(func(json.loads(j["args"][0])))
             else:
                 self._log.warning("Unknown HB command {}({})".format(cmd, j))
 
@@ -224,11 +224,11 @@ class IRCServerProtocol(asyncio.Protocol):
         if self._logintoken == None:
             text = ("464 {} :Invalid password given.  Closing connection") \
                 .format(self._nick)
-            asyncio.ensure_future(self.send(text))
-            asyncio.ensure_future(self.disconnect())
+            asyncio.async(self.send(text))
+            asyncio.async(self.disconnect())
         else:
             self._loggedin = True
-            asyncio.ensure_future(self.welcome())
+            asyncio.async(self.welcome())
 
     @asyncio.coroutine
     def welcome(self):
