@@ -158,8 +158,9 @@ class IRCServerProtocol(asyncio.Protocol):
         if self._loggedin:
             c = tok[0].lstrip("#").lower()
             self._log.debug("Retrieving nick list for {}".format(c))
-            yield from self._channels[c].signalNames()
-            yield from self._channels[c].userList()
+            #yield from self._channels[c].signalNames()
+            #yield from self._channels[c].userList()
+            #TODO: unstub this when i fix the updater implementation
 
     @asyncio.coroutine
     def on_quit(self, tok):
