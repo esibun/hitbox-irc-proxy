@@ -20,6 +20,7 @@ class HitboxClient:
         self._loggedIn = False
         self._namecolor = "D44F38"
         self._waitingmessages = []
+        self._namessent = False
         self._dispatcher = asyncio.Semaphore(value=0)
         self._log = logging.getLogger("ws")
 
@@ -128,6 +129,7 @@ class HitboxClient:
                 self._log.debug("Logging into channel #{}..." \
                     .format(self._channel))
                 yield from self.joinChannel()
+                asyncio.async(self.updateNickListEveryTen())
             elif msg == "2::":
                 self._log.debug("PING? PONG!")
                 yield from self.pong()
@@ -142,6 +144,15 @@ class HitboxClient:
         self._log.debug("> {}".format(msg))
 
     @asyncio.coroutine
+    def updateNickListEveryTen(self):
+        """Loops infinitely and calls the nicklist updater every 10 seconds."""
+        self._log.debug("Nicklist updater called")
+        while True:
+            self._log.debug("Updating Nick List for {}".format(self._channel))
+            yield from asyncio.sleep(10.0)
+            #yield from self.userList()
+
+    @asyncio.coroutine
     def getNextMessage(self):
         """Grabs the next incoming message and sends it to the object using the
         socket.  Blocks if a message is not available."""
@@ -152,10 +163,33 @@ class HitboxClient:
     def dispatchMessage(self, msg):
         """Adds a message to the message queue and signals that a message is
         available, unblocking anything calling getNextMessage()"""
+        try:
+            msg["args"]["method"] # this will throw an error normally
+        except TypeError:
+            self._log.debug(msg)
+            args = json.loads(json.loads(msg)["args"][0])
+            if args["method"] == "userList":
+                if self._namessent:
+                    self._namessent = False # disable sending list after a dispatch
+                else:
+                    msg = yield from self._calculateDelta(msg)
         self._waitingmessages.append(msg)
         self._dispatcher.release()
         self._log.debug("Message dispatched.  Sem: {}" \
             .format(repr(self._dispatcher)))
+
+    @asyncio.coroutine
+    def _calculateDelta(self, msg):
+        oldnicklist = self._nicklist
+        newnicklist = msg["args"]["params"]["data"]
+        return {}
+
+    @asyncio.coroutine
+    def signalNames(self):
+        """Signals to the socket that a NAMES request has happened, therefore
+        we should send the list directly to the server instead of calculating
+        the differences"""
+        self._namessent = True
 
     @asyncio.coroutine
     def joinChannel(self):
@@ -229,7 +263,6 @@ class HitboxClient:
     def userInfo(self, nick):
         """Get information about a user including it's roles.
             :nick: Nick to get information about
-        
         """
         prefix = "5:::"
         j = json.dumps({

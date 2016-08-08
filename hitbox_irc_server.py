@@ -124,6 +124,10 @@ class IRCServerProtocol(asyncio.Protocol):
             self._log.debug("JOIN before registration, ignoring")
         else:
             channel = tok[0].lstrip("#").lower()
+            if channel in self._channels:
+                self._log.debug("JOIN called but already in #{}"
+                    .format(channel))
+                return
             self._log.debug("Joining {}".format(channel))
             self._channels[channel] = HitboxClient(channel, self._nick,
             self._logintoken)
@@ -144,6 +148,18 @@ class IRCServerProtocol(asyncio.Protocol):
             self._channels[c] = None
             self._log.debug("Connection to #{} closed." \
                 .format(c))
+
+    @asyncio.coroutine
+    def on_names(self, tok):
+        """Called by data_received in response to a NAMES command.  This command
+        returns a full list of the users on a channel in RFC 1459 format.
+            :tok: An array of tokens parsed from the command
+        """
+        if self._loggedin:
+            c = tok[0].lstrip("#").lower()
+            self._log.debug("Retrieving nick list for {}".format(c))
+            yield from self._channels[c].signalNames()
+            yield from self._channels[c].userList()
 
     @asyncio.coroutine
     def on_quit(self, tok):
@@ -217,6 +233,14 @@ class IRCServerProtocol(asyncio.Protocol):
             yield from self.sendn("PRIVMSG #{} :{}" \
                 .format(json["params"]["channel"], json["params"]["text"]),
                 nick=json["params"]["name"])
+
+    @asyncio.coroutine
+    def handle_userList(self, json):
+        """This command handles incoming userlist messages.  This is sent by
+        the server if a NAMES request happened.
+            :json: Parsed JSON.
+        """
+
 
     def authenticate(self):
         """Check the authentication result.  If OK, send the welcome message.
