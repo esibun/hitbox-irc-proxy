@@ -20,7 +20,8 @@ class HitboxClient:
         self._loggedIn = False
         self._namecolor = "D44F38"
         self._waitingmessages = []
-        self._namessent = False
+        self._nicklist = []
+        self._namessent = True #true initially so we send NAMES on join
         self._dispatcher = asyncio.Semaphore(value=0)
         self._log = logging.getLogger("ws")
 
@@ -129,7 +130,6 @@ class HitboxClient:
                 self._log.debug("Logging into channel #{}..." \
                     .format(self._channel))
                 yield from self.joinChannel()
-                asyncio.async(self.updateNickListEveryTen())
             elif msg == "2::":
                 self._log.debug("PING? PONG!")
                 yield from self.pong()
@@ -149,8 +149,8 @@ class HitboxClient:
         self._log.debug("Nicklist updater called")
         while True:
             self._log.debug("Updating Nick List for {}".format(self._channel))
+            yield from self.userList()
             yield from asyncio.sleep(10.0)
-            #yield from self.userList()
 
     @asyncio.coroutine
     def getNextMessage(self):
@@ -168,6 +168,8 @@ class HitboxClient:
         except TypeError:
             self._log.debug(msg)
             args = json.loads(json.loads(msg)["args"][0])
+            if args["method"] == "loginMsg":
+                asyncio.async(self.updateNickListEveryTen())
             if args["method"] == "userList":
                 if self._namessent:
                     self._namessent = False # disable sending list after a dispatch
@@ -180,15 +182,16 @@ class HitboxClient:
 
     @asyncio.coroutine
     def _calculateDelta(self, msg):
-        oldnicklist = self._nicklist
-        newnicklist = msg["args"]["params"]["data"]
-        return {}
+        #oldnicklist = self._nicklist
+        #newnicklist = msg["args"]["params"]["data"]
+        return msg #TODO
 
     @asyncio.coroutine
     def signalNames(self):
         """Signals to the socket that a NAMES request has happened, therefore
         we should send the list directly to the server instead of calculating
         the differences"""
+        self._log.debug("NAMES signaled to socket, next reply direct")
         self._namessent = True
 
     @asyncio.coroutine

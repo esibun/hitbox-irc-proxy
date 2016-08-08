@@ -240,7 +240,29 @@ class IRCServerProtocol(asyncio.Protocol):
         the server if a NAMES request happened.
             :json: Parsed JSON.
         """
+        @asyncio.coroutine
+        def iterate_list(nicklist, modechar):
+            for l in nicklist:
+                yield from self.send("353 {} = #{} :{}{}".format(
+                    self._nick,
+                    json["params"]["channel"],
+                    modechar,
+                    l))
 
+        self._log.debug("Calculating NAMES result...")
+        ownerlist = list(set(json["params"]["data"]["admin"])
+            .intersection([self._nick]))
+        adminlist = list(set(json["params"]["data"]["admin"]) - set(ownerlist))
+        modlist = json["params"]["data"]["user"]
+        fullsublist = json["params"]["data"]["isSubscriber"]
+        sublist = list(set(fullsublist) - set(adminlist) - set(modlist))
+        fullreglist = json["params"]["data"]["anon"]
+        reglist = list(set(fullreglist) - set(fullsublist))
+        for l in [adminlist, modlist, sublist, reglist]:
+            self._log.debug(repr(l))
+        for l in [[ownerlist, "~"], [adminlist, "&"], [modlist, "@"],
+            [sublist, "+"], [reglist, ""]]:
+            yield from iterate_list(l[0], l[1])
 
     def authenticate(self):
         """Check the authentication result.  If OK, send the welcome message.
