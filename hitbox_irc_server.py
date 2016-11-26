@@ -187,7 +187,7 @@ class IRCServerProtocol(asyncio.Protocol):
         if self._loggedin:
             if tok[0][0] == "#":
                 c = tok[0].lstrip("#").lower()
-                t = "".join(tok[1:])[1:]
+                t = " ".join(tok[1:])[1:]
                 yield from self._channels[c].sendMessage(t)
 
     @asyncio.coroutine
